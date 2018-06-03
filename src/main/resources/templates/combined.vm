@@ -75,9 +75,9 @@ DECLARATION BLOCK:
 =====================================================================================================
 
 [$ice] #ifndef ${POJO}_ICE
-[$ice] #define ${POJO}_ICE
+[$ice] \#define ${POJO}_ICE
 [$hdr] #ifndef ${POJOI}_H
-[$hdr] #define ${POJOI}_H
+[$hdr] \#define ${POJOI}_H
 
 [$ice] \#include <omero/model/IObject.ice>
 [$ice] \#include <omero/RTypes.ice>
