@@ -1,0 +1,22 @@
+
+plugins {
+    id 'java-gradle-plugin'
+}
+
+repositories {
+    mavenCentral()
+    mavenLocal()
+}
+
+gradlePlugin {
+    plugins {
+        BlitzPlugin {
+            id = 'org.openmicroscopy.blitzplugin'
+            implementationClass = 'BlitzPlugin'
+        }
+    }
+}
+
+dependencies {
+    compile 'org.openmicroscopy:dslplugin:1.0'
+}

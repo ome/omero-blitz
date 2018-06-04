@@ -1,5 +1,5 @@
 // Runs the DSLTask OMERO plugin
-dsl() {
+dsl {
     def mappingsDir = "extracted/omero-model"
     def mappingsTree = project.fileTree(dir: mappingsDir, include: '**/*.ome.xml')
 

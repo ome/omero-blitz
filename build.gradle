@@ -5,14 +5,15 @@ buildscript {
     }
 
     dependencies {
-        classpath 'com.openmicroscopy:dslplugin:1.0'
+        classpath 'org.openmicroscopy:dslplugin:1.0'
     }
 }
 
 
 apply plugin: 'java'
 apply plugin: 'maven-publish'
-apply plugin: 'com.openmicroscopy.dslplugin'
+apply plugin: 'org.openmicroscopy.dslplugin'
+apply plugin: 'org.openmicroscopy.blitzplugin'
 
 group 'openmicroscopy.com'
 version '1.0-SNAPSHOT'
@@ -42,7 +43,13 @@ sourceSets {
     }
 }
 
-apply from: "mappings.gradle"
+task importMappings(type: ImportMappingsTask) {
+    description 'Extracts mapping files from dependency org.openmicroscopy:omero-model'
+    extractDir = project.file('extracted')
+}
+
+
+// apply from: "mappings.gradle"
 apply from: "dsl.gradle"
 
 /*
