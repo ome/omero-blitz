@@ -34,14 +34,14 @@ dsl {
             omeXmlFiles = mappingsTree
         }
 
-        combined {
+        /*combined {
             template = "combined.vm"
             outputPath = project.file("src/generated/combined")
             omeXmlFiles = mappingsTree
             formatOutput = { st ->
                 "${st.getShortname()}I.combined"
             }
-        }
+        }*/
     }
 }
 

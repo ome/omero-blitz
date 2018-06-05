@@ -43,10 +43,10 @@ sourceSets {
     }
 }
 
-task importMappings(type: ImportMappingsTask) {
-    description 'Extracts mapping files from dependency org.openmicroscopy:omero-model'
-    extractDir = project.file('extracted')
-}
+//task importMappings(type: ImportMappingsTask) {
+//    description 'Extracts mapping files from dependency org.openmicroscopy:omero-model'
+//    extractDir = project.file('extracted')
+//}
 
 
 // apply from: "mappings.gradle"
