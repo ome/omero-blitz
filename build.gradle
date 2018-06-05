@@ -51,18 +51,3 @@ sourceSets {
 
 // apply from: "mappings.gradle"
 apply from: "dsl.gradle"
-
-/*
-task splitCppHeaders(type: Copy) {
-    with myCopySpec
-    into "${outDir}/cpp/headers/"
-    filter { line ->
-        line.contains("[all]") ?
-                line.replaceFirst("\\[all\\]", "") : line.contains("[hdr]") ?
-                line.replaceFirst("\\[hdr\\]", "") : line.replaceAll(".", "")
-    }
-
-
-
-    filter(LineContainsRegExp, regexps: [allExp, blankLineExp])
-}*/

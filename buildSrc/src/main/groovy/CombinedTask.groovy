@@ -1,14 +1,29 @@
 import dslplugin.DslPlugin
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
+import org.gradle.api.tasks.OutputDirectory
 import org.gradle.api.tasks.TaskAction
 
 class CombinedTask extends DefaultTask {
+
+    @OutputDirectory
+    File outputDir
 
     @TaskAction
     void apply() {
         if (!project.plugins.hasPlugin(DslPlugin)) {
             throw new GradleException("Requires org.openmicroscopy:dslplugin")
+        }
+
+        def output = getOutputDir()
+        if (output == null) {
+            outputDir = "${project.buildDir}/combined"
+        }
+
+
+
+        project.tasks ( ) {
+
         }
 
         project.dsl {
@@ -20,7 +35,7 @@ class CombinedTask extends DefaultTask {
 
             combined {
                 template = "combined.vm"
-                outputPath = project.file("${project.buildDir}/combined")
+                outputPath = project.file(outputDir)
                 omeXmlFiles = mappingsTree
                 formatOutput = { st ->
                     "${st.getShortname()}I.combined"
