@@ -1,11 +1,9 @@
-import dslplugin.DslOperation
 import dslplugin.DslPlugin
 import dslplugin.DslTask
 import dslplugin.VelocityExtension
 import org.gradle.api.GradleException
 import org.gradle.api.Plugin
 import org.gradle.api.Project
-import org.gradle.api.plugins.ExtensionContainer
 
 class BlitzPlugin implements Plugin<Project> {
 
@@ -13,10 +11,10 @@ class BlitzPlugin implements Plugin<Project> {
      * Sets the group name for the DSLPlugin tasks to reside in.
      * i.e. In a terminal, call `./gradlew tasks` to list tasks in their groups in a terminal
      */
-    final def GROUP = 'omero'
+    static final def GROUP = 'omero'
 
     static final String DEFAULT_IMPORT_MAPPINGS_DIR = 'extracted'
-    static final String OMERO_MODEL_VERSION = '1.0.+'
+    static final String DEFAULT_COMBINED_DIR = 'combined'
 
     BlitzExtension blitzExt
 
@@ -30,6 +28,7 @@ class BlitzPlugin implements Plugin<Project> {
         blitzExt = project.extensions.create('blitz', BlitzExtension)
         configureImportMappingsTask(project)
         configureCombineTask(project)
+        configureSplitTask(project)
     }
 
     def configureImportMappingsTask(Project project) {
@@ -45,39 +44,51 @@ class BlitzPlugin implements Plugin<Project> {
     }
 
     def configureCombineTask(Project project) {
-        def mappingsDir = getMappingsDir(project, blitzExt)
+        project.afterEvaluate {
+            def mappingsDir = getMappingsDir(project, blitzExt)
 
-        // Config for velocity
-        def velocityExtension = new VelocityExtension()
-        velocityExtension.resource_loader = 'file'
-        velocityExtension.file_resource_loader_path = "src/main/resources/templates"
-        velocityExtension.file_resource_loader_cache = false
-        velocityExtension.logger_class_name = project.getLogger().getClass().getName()
+            // Config for velocity
+            def velocityExt = new VelocityExtension()
+            velocityExt.resource_loader = 'file'
+            velocityExt.logger_class_name = project.getLogger().getClass().getName()
 
-        // Default operation config
-        def dslOp = new DslOperation()
-        dslOp.template = "combined.vm"
-        dslOp.outputPath = project.file("src/generated/combined")
-        dslOp.omeXmlFiles = project.fileTree(dir: mappingsDir, include: '**/*.ome.xml')
-        dslOp.formatOutput = { st -> "${st.getShortname()}I.combined" }
+            // Add task to process combine.vm
+            project.task('processCombine', type: DslTask) {
+                group = GROUP
+                description 'Processes the combined.vm'
 
-        // Add task to process combine.vm
-        project.task('processCombine', type: DslTask) {
-            group = GROUP
-            description 'Processes the combined.vm'
-
-            // Configure velocity
-            properties = DslPlugin.configureVelocity(velocityExtension)
-            template = "combined.vm"
-            omeXmlFiles = info.omeXmlFiles
-            outputPath = info.outputPath
-            outFile = info.outFile
-            formatOutput = info.formatOutput
+                // Configure velocity
+                velocityProps = DslPlugin.configureVelocity(velocityExt)
+                template = getCombinedTemplateFile()
+                omeXmlFiles = project.fileTree(dir: mappingsDir, include: '**/*.ome.xml')
+                outputPath = project.file(getCombinedDir(project, blitzExt))
+                formatOutput = { st -> "${st.getShortname()}I.combined" }
+            }
         }
     }
 
-    def createTasksForSplits(Project project) {
+    def configureSplitTask(Project project) {
+        project.afterEvaluate {
+            // Check only supported languages are used
+            def langs = blitzExt.languages.collect() {
+                def val = Language.find(it)
+                if (val == null) {
+                    throw new GradleException("Unsupported language")
+                }
+                return val
+            }
 
+            project.task("splitCombined", type: SplitTask) {
+                group = GROUP
+                languages = langs
+                outputDir = blitzExt.outputPath
+                combinedDir = getCombinedDir(project, blitzExt)
+            }
+        }
+    }
+
+    def getCombinedTemplateFile() {
+        return new File(this.class.classLoader.getResource('combined.vm').getFile())
     }
 
     static def getMappingsDir(Project project, BlitzExtension blitz) {
@@ -87,15 +98,9 @@ class BlitzPlugin implements Plugin<Project> {
         }
         return mappingsDir
     }
+
+    static File getCombinedDir(Project project, BlitzExtension blitz) {
+        return new File("${project.buildDir}/${DEFAULT_COMBINED_DIR}")
+    }
 }
 
-class BlitzExtension {
-
-    String[] languages
-
-    File mappingsDir
-
-    File outputPath
-
-
-}

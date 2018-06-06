@@ -4,6 +4,16 @@ import org.gradle.api.plugins.JavaPlugin
 import org.gradle.api.tasks.OutputDirectory
 import org.gradle.api.tasks.TaskAction
 
+/**
+ * Task that allows you to get {@code .ome.xml} files from omero-model artifact
+ *
+ * Example usage:
+ * <pre>
+ * {@code
+ * task importMappings(type: ImportMappingsTask)
+ * }
+ * </pre>
+ */
 class ImportMappingsTask extends DefaultTask {
 
     static final String CONFIGURATION_NAME = 'mappings'
