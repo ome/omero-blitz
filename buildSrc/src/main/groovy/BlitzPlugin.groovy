@@ -44,26 +44,30 @@ class BlitzPlugin implements Plugin<Project> {
     }
 
     def configureCombineTask(Project project) {
+        def task = project.task('processCombine', type: DslTask) {
+            group = GROUP
+            description 'Processes the combined.vm'
+        }
+
+        // Config for velocity
+        VelocityExtension velocityExt = new VelocityExtension()
+        velocityExt.resource_loader = 'file'
+        velocityExt.file_resource_loader_path = "${project.projectDir}"
+        velocityExt.logger_class_name = project.getLogger().getClass().getName()
+
+        // Create properties
+        Properties props =  DslPlugin.createVelocityProperties(velocityExt)
+
         project.afterEvaluate {
             def mappingsDir = getMappingsDir(project, blitzExt)
 
-            // Config for velocity
-            def velocityExt = new VelocityExtension()
-            velocityExt.resource_loader = 'file'
-            velocityExt.logger_class_name = project.getLogger().getClass().getName()
-
             // Add task to process combine.vm
-            project.task('processCombine', type: DslTask) {
-                group = GROUP
-                description 'Processes the combined.vm'
-
-                // Configure velocity
-                velocityProps = DslPlugin.configureVelocity(velocityExt)
-                template = getCombinedTemplateFile()
-                omeXmlFiles = project.fileTree(dir: mappingsDir, include: '**/*.ome.xml')
-                outputPath = project.file(getCombinedDir(project, blitzExt))
-                formatOutput = { st -> "${st.getShortname()}I.combined" }
-            }
+            // Configure velocity
+            task.velocityProps =props
+            task.template = new File("src/main/resources/templates/combined.vm")
+            task.omeXmlFiles = project.fileTree(dir: mappingsDir, include: '**/*.ome.xml')
+            task.outputPath = project.file(getCombinedDir(project, blitzExt))
+            task.formatOutput = { st -> "${st.getShortname()}I.combined" }
         }
     }
 

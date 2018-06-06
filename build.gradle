@@ -47,3 +47,5 @@ sourceSets {
 //    description 'Extracts mapping files from dependency org.openmicroscopy:omero-model'
 //    extractDir = project.file('extracted')
 //}
+
+// apply from: 'dsl.gradle'

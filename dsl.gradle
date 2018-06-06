@@ -1,11 +1,10 @@
 // Runs the DSLTask OMERO plugin
 dsl {
-    def mappingsDir = "extracted/omero-model"
-    def mappingsTree = project.fileTree(dir: mappingsDir, include: '**/*.ome.xml')
+    def mappingsTree = project.fileTree(dir: project.buildDir, include: '**/*.ome.xml')
 
     velocity {
         resource_loader = 'file'
-        file_resource_loader_path = "src/main/resources/templates"
+        file_resource_loader_path = "${projectDir}/src/main/resources/templates"
         file_resource_loader_cache = false
     }
 
@@ -17,31 +16,31 @@ dsl {
         }
 
         javaModelObjectFactoryRegistry {
-            template = "java_obj_reg.vm"
+            template = "src/main/resources/templates/java_obj_reg.vm"
             outFile = project.file("src/generated/java/omero/util//ModelObjectFactoryRegistry.java/")
             omeXmlFiles = mappingsTree
         }
 
         cppModelObjectFactoryRegistry {
-            template = "cpp_obj_reg.vm"
+            template = project.file("src/main/resources/templates/cpp_obj_reg.vm")
             outFile = project.file("src/generated/cpp/omero/model/ObjectFactory.cpp")
             omeXmlFiles = mappingsTree
         }
 
         pythonModelObjectFactoryRegistry {
-            template = "py_obj_reg.vm"
+            template = new File("src/main/resources/templates/py_obj_reg.vm")
             outFile = project.file("src/generated/python/omero/ObjectFactoryRegistrar.py")
             omeXmlFiles = mappingsTree
         }
 
-        /*combined {
-            template = "combined.vm"
+        combined {
+            template = new File("src/main/resources/templates/combined.vm")
             outputPath = project.file("src/generated/combined")
             omeXmlFiles = mappingsTree
             formatOutput = { st ->
                 "${st.getShortname()}I.combined"
             }
-        }*/
+        }
     }
 }
 

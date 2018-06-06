@@ -7,7 +7,7 @@ dependencies {
 }
 
 // CONSTANTS
-def EXTRACT_DIR = "extracted"
+def EXTRACT_DIR = "${project.buildDir}/extracted/mappings"
 
 /* cleans the extracted omero-model folder */
 task cleanMappings(type: Delete) { delete EXTRACT_DIR }
