@@ -1,5 +1,9 @@
-import org.gradle.api.file.CopySpec
-import org.gradle.api.tasks.*
+import org.gradle.api.DefaultTask
+import org.gradle.api.GradleException
+import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.InputDirectory
+import org.gradle.api.tasks.OutputDirectory
+import org.gradle.api.tasks.TaskAction
 
 class SplitSpec {
     Language language
@@ -7,13 +11,13 @@ class SplitSpec {
     String output
 }
 
-class SplitTask extends Copy {
+class SplitTask extends DefaultTask {
 
     /**
      * List of the languages we want to split from .combined files
      */
     @Input
-    Language[] languages
+    String language
 
     /**
      * Directory to spit out source files
@@ -21,38 +25,33 @@ class SplitTask extends Copy {
     @OutputDirectory
     File outputDir
 
+    String outputName
+
     /**
      * Directory to .combined files
      */
     @InputDirectory
     File combinedDir
 
-    @Internal
-    CopySpec internalCopySpec
-
     @TaskAction
     void action() {
-        internalCopySpec = project.copySpec {
+        // Lookup the language
+        Language lang = Language.find(language)
+        if (lang == null) {
+            throw new GradleException("Unsupported language : ${language}")
+        }
+
+        def myCopySpec = project.copySpec {
             from(combinedDir) {
                 include '**/*.combined'
             }
         }
 
-        switch (languages) {
-            case Language.CPP:
-                cppSplit()
-        }
-    }
-
-
-
-    def cppSplit() {
-        Language.CPP.prefixes.each { prefix ->
+        lang.prefixes.each { prefix ->
             final def prefixName = prefix.name().toLowerCase()
-
             project.copy {
                 into "${outputDir}/${prefixName}"
-                with internalCopySpec
+                with myCopySpec
                 filter { filerLine(it, prefixName) }
                 rename '(.*?)I[.]combined', "omero/model/\$1I.${prefix.extension}"
             }

@@ -1,7 +1,6 @@
 import dslplugin.DslPluginBase
 import dslplugin.DslTask
 import dslplugin.VelocityExtension
-import org.gradle.api.GradleException
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 
@@ -12,9 +11,6 @@ class BlitzPlugin implements Plugin<Project> {
      * i.e. In a terminal, call `./gradlew tasks` to list tasks in their groups in a terminal
      */
     static final def GROUP = 'omero'
-
-    static final String DEFAULT_IMPORT_MAPPINGS_DIR = 'extracted'
-    static final String DEFAULT_COMBINED_DIR = 'combined'
 
     BlitzExtension blitzExt
 
@@ -36,12 +32,13 @@ class BlitzPlugin implements Plugin<Project> {
     }
 
     def configureImportMappingsTask(Project project) {
+        def task = project.task('importMappings', type: ImportMappingsTask) {
+            group = GROUP
+            description 'Extracts mapping files from dependency org.openmicroscopy:omero-model'
+        }
+
         project.afterEvaluate {
-            project.task('importMappings', type: ImportMappingsTask) {
-                group = GROUP
-                description 'Extracts mapping files from dependency org.openmicroscopy:omero-model'
-                extractDir = blitzExt.mappingsDir
-            }
+            task.extractDir = blitzExt.mappingsDir
         }
     }
 
@@ -67,10 +64,13 @@ class BlitzPlugin implements Plugin<Project> {
             task.outputPath = blitzExt.combinedDir
             task.formatOutput = { st -> "${st.getShortname()}I.combined" }
         }
+
+        project.tasks.findByName('importMappings').dependsOn(task.name)
     }
 
     def configureSplitTask(Project project) {
-        project.afterEvaluate {
+
+        /*project.afterEvaluate {
             // Check only supported languages are used
             def langs = blitzExt.languages.collect() {
                 def val = Language.find(it)
@@ -86,7 +86,7 @@ class BlitzPlugin implements Plugin<Project> {
                 outputDir = blitzExt.outputDir
                 combinedDir = blitzExt.combinedDir
             }
-        }
+        }*/
     }
 }
 

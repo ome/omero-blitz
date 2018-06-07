@@ -49,3 +49,16 @@ sourceSets {
 //}
 
 // apply from: 'dsl.gradle'
+
+task splitCpp (type: SplitTask) {
+    language = 'cpp'
+    outputDir = 'myfolder'
+    combined = 'mycombinedFiles'
+}
+
+task  zipStuff (ype: Zip) {
+    from 'folder'
+    into 'folder'
+}
+
+zipStuff.dependsOn splitCpp

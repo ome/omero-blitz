@@ -5,8 +5,8 @@ enum Language {
     ICE(Prefix.ICE)
 
     static def find(String language) {
-        def lang = language.trim().toUpperCase()
-        for (def sl : values()) {
+        String lang = language.trim().toUpperCase()
+        for (Language sl : values()) {
             if (sl.name() == lang) {
                 return sl
             }
