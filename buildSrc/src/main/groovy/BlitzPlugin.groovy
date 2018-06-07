@@ -26,6 +26,9 @@ class BlitzPlugin implements Plugin<Project> {
         blitzExt.mappingsDir = new File("${project.buildDir}/extracted")
         blitzExt.combinedDir = new File("${project.buildDir}/combined")
 
+        // Add container for blitz
+        blitzExt.extensions.add('interfaces', project.container(DslOperation))
+
         configureImportMappingsTask(project)
         configureCombineTask(project)
         configureSplitTask(project)

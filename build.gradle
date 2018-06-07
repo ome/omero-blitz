@@ -12,7 +12,6 @@ buildscript {
 
 apply plugin: 'java'
 apply plugin: 'maven-publish'
-// apply plugin: 'org.openmicroscopy.dslplugin'
 apply plugin: 'org.openmicroscopy.blitzplugin'
 
 group 'openmicroscopy.com'
@@ -50,13 +49,13 @@ sourceSets {
 
 // apply from: 'dsl.gradle'
 
-task splitCpp (type: SplitTask) {
+task splitCpp(type: SplitTask) {
     language = 'cpp'
     outputDir = 'myfolder'
     combined = 'mycombinedFiles'
 }
 
-task  zipStuff (ype: Zip) {
+task zipStuff(ype: Zip) {
     from 'folder'
     into 'folder'
 }
