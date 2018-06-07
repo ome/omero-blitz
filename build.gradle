@@ -12,7 +12,7 @@ buildscript {
 
 apply plugin: 'java'
 apply plugin: 'maven-publish'
-apply plugin: 'org.openmicroscopy.dslplugin'
+// apply plugin: 'org.openmicroscopy.dslplugin'
 apply plugin: 'org.openmicroscopy.blitzplugin'
 
 group 'openmicroscopy.com'

@@ -1,6 +1,12 @@
 import org.gradle.api.file.CopySpec
 import org.gradle.api.tasks.*
 
+class SplitSpec {
+    Language language
+    Prefix prefix
+    String output
+}
+
 class SplitTask extends Copy {
 
     /**
@@ -37,6 +43,8 @@ class SplitTask extends Copy {
                 cppSplit()
         }
     }
+
+
 
     def cppSplit() {
         Language.CPP.prefixes.each { prefix ->

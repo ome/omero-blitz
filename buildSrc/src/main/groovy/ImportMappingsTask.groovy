@@ -1,6 +1,7 @@
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.plugins.JavaPlugin
+import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.OutputDirectory
 import org.gradle.api.tasks.TaskAction
 
@@ -11,12 +12,15 @@ import org.gradle.api.tasks.TaskAction
  * <pre>
  * {@code
  * task importMappings(type: ImportMappingsTask)
- * }
+ *}
  * </pre>
  */
 class ImportMappingsTask extends DefaultTask {
 
+    @Internal
     static final String CONFIGURATION_NAME = 'mappings'
+
+    @Internal
     static final String OMERO_MODEL_VERSION = '1.0.+'
 
     @OutputDirectory

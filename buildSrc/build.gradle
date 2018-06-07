@@ -1,12 +1,9 @@
-
 plugins {
     id 'java-gradle-plugin'
 }
 
-repositories {
-    mavenCentral()
-    mavenLocal()
-}
+group 'org.openmicroscopy'
+version '1.0.0'
 
 gradlePlugin {
     plugins {
@@ -15,6 +12,11 @@ gradlePlugin {
             implementationClass = 'BlitzPlugin'
         }
     }
+}
+
+repositories {
+    mavenCentral()
+    mavenLocal()
 }
 
 dependencies {

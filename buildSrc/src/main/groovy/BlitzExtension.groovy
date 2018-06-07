@@ -3,5 +3,7 @@ class BlitzExtension {
 
     File mappingsDir
 
-    File outputPath
+    File combinedDir
+
+    File outputDir
 }
