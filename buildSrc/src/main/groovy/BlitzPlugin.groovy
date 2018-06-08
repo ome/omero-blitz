@@ -3,6 +3,7 @@ import dslplugin.DslTask
 import dslplugin.VelocityExtension
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.plugins.JavaPlugin
 
 class BlitzPlugin implements Plugin<Project> {
 
@@ -27,11 +28,11 @@ class BlitzPlugin implements Plugin<Project> {
         blitzExt.combinedDir = new File("${project.buildDir}/combined")
 
         // Add container for blitz
-        blitzExt.extensions.add('interfaces', project.container(DslOperation))
+        blitzExt.extensions.add('interfaces', project.container(SplitExtension))
 
         configureImportMappingsTask(project)
         configureCombineTask(project)
-        configureSplitTask(project)
+        configureSplitTasks(project)
     }
 
     def configureImportMappingsTask(Project project) {
@@ -68,28 +69,31 @@ class BlitzPlugin implements Plugin<Project> {
             task.formatOutput = { st -> "${st.getShortname()}I.combined" }
         }
 
-        project.tasks.findByName('importMappings').dependsOn(task.name)
+        // project.tasks.findByName('importMappings').dependsOn(task.name)
     }
 
-    def configureSplitTask(Project project) {
+    def configureSplitTasks(Project project) {
+        project.dsl.generate.all { SplitExtension split ->
+            def taskName = "split${split.name.capitalize()}"
 
-        /*project.afterEvaluate {
-            // Check only supported languages are used
-            def langs = blitzExt.languages.collect() {
-                def val = Language.find(it)
-                if (val == null) {
-                    throw new GradleException("Unsupported language")
-                }
-                return val
-            }
-
-            project.task("splitCombined", type: SplitTask) {
+            // Create task and assign group name
+            def task = project.task(taskName, type: SplitTask) {
                 group = GROUP
-                languages = langs
-                outputDir = blitzExt.outputDir
-                combinedDir = blitzExt.combinedDir
+                description = "Splits ${split.language} from .combined files"
             }
-        }*/
+
+            // Assign property values to task inputs
+            project.afterEvaluate {
+                task.combinedDir = blitzExt.combinedDir
+                task.language = split.language
+                task.outputDir = split.outputDir
+            }
+
+            if (project.plugins.hasPlugin(JavaPlugin)) {
+                // Ensure the dsltask runs before compileJava
+                project.tasks.getByName("compileJava").dependsOn(taskName)
+            }
+        }
     }
 }
 

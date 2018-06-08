@@ -37,9 +37,9 @@ class ImportMappingsTask extends DefaultTask {
         }
 
         project.copy {
-            from project.zipTree(omeroModelArtifact.file).matching { include "**/*.ome.xml" }
+            from project.zipTree(omeroModelArtifact.file)
             into extractDir
-            include "mappings/**"
+            include "mappings/*.ome.xml"
         }
     }
 
