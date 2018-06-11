@@ -42,19 +42,16 @@ sourceSets {
     }
 }
 
-blitz { b ->
+blitz {
     api {
         java { s ->
             s.language 'java'
             s.outputDir 'src/generated/interfaces'
-            s.combinedDir b.combinedDir
         }
 
         ice { i ->
             i.language 'ice'
             i.outputDir 'src/generated/ice'
-            i.combinedDir b.combinedDir
         }
     }
-
 }
