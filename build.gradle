@@ -42,14 +42,19 @@ sourceSets {
     }
 }
 
-task heh(type: Copy) {
-    from 'here', 'there'
-}
+blitz { b ->
+    api {
+        java { s ->
+            s.language 'java'
+            s.outputDir 'src/generated/interfaces'
+            s.combinedDir b.combinedDir
+        }
 
-task hur(type: SplitTask) {
-    language "java"
-    outputDir "out"
-    include "**/*.combined"
-    source "${project.buildDir}"
+        ice { i ->
+            i.language 'ice'
+            i.outputDir 'src/generated/ice'
+            i.combinedDir b.combinedDir
+        }
+    }
 
 }

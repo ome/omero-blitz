@@ -24,11 +24,11 @@ class BlitzPlugin implements Plugin<Project> {
         blitzExt = project.extensions.create('blitz', BlitzExtension)
 
         // Default config for blitz
-        blitzExt.mappingsDir = new File("${project.buildDir}/extracted")
-        blitzExt.combinedDir = new File("${project.buildDir}/combined")
+        blitzExt.mappingsDir "${project.buildDir}/extracted"
+        blitzExt.combinedDir "${project.buildDir}/combined"
 
         // Add container for blitz
-        blitzExt.extensions.add('interfaces', project.container(SplitExtension))
+        blitzExt.extensions.add('api', project.container(SplitExtension))
 
         configureImportMappingsTask(project)
         configureCombineTask(project)
@@ -37,7 +37,7 @@ class BlitzPlugin implements Plugin<Project> {
 
     def configureImportMappingsTask(Project project) {
         def task = project.task('importMappings', type: ImportMappingsTask) {
-            group = GROUP
+            group GROUP
             description 'Extracts mapping files from dependency org.openmicroscopy:omero-model'
         }
 
@@ -73,7 +73,7 @@ class BlitzPlugin implements Plugin<Project> {
     }
 
     def configureSplitTasks(Project project) {
-        project.dsl.generate.all { SplitExtension split ->
+        project.blitz.api.all { SplitExtension split ->
             def taskName = "split${split.name.capitalize()}"
 
             // Create task and assign group name
@@ -84,7 +84,7 @@ class BlitzPlugin implements Plugin<Project> {
 
             // Assign property values to task inputs
             project.afterEvaluate {
-                task.combinedDir = blitzExt.combinedDir
+                task.combined = project.fileTree(dir: blitzExt.combinedDir, include: '**/*.combined')
                 task.language = split.language
                 task.outputDir = split.outputDir
             }

@@ -1,3 +1,6 @@
+/**
+ * File extension each prefix in .combined corresponds to
+ */
 enum Prefix {
     HDR ('.h'),
     CPP ('.cpp'),

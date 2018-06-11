@@ -1,3 +1,6 @@
+/**
+ * List of supported languages by blitz code generation
+ */
 enum Language {
     CPP(Prefix.HDR, Prefix.CPP),
     JAVA(Prefix.JAV),

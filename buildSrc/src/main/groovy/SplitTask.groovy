@@ -4,13 +4,7 @@ import org.gradle.api.GradleException
 import org.gradle.api.Transformer
 import org.gradle.api.file.FileCollection
 import org.gradle.api.internal.file.copy.RegExpNameMapper
-import org.gradle.api.tasks.Input
-import org.gradle.api.tasks.InputFiles
-import org.gradle.api.tasks.OutputFiles
-import org.gradle.api.tasks.PathSensitive
-import org.gradle.api.tasks.PathSensitivity
-import org.gradle.api.tasks.SkipWhenEmpty
-import org.gradle.api.tasks.TaskAction
+import org.gradle.api.tasks.*
 
 import java.util.regex.Pattern
 
@@ -34,26 +28,46 @@ class SplitTask extends DefaultTask {
     @SkipWhenEmpty
     @InputFiles
     @PathSensitive(PathSensitivity.NONE)
-    FileCollection combinedFiles
+    FileCollection combined
 
-    @SkipWhenEmpty
-    @Input
-    private Transformer<String, String> rename
+    @Optional
+    Transformer<String, String> nameTransformer
+
+    /**
+     * Directory to spit out source files
+     * @param dir
+     * @return
+     */
+    def outputDir(File dir) {
+        this.outputDir = dir
+    }
+
+    /**
+     * Directory to spit out source files
+     * @param dir
+     * @return
+     */
+    def outputDir(String dir) {
+        this.outputDir = new File(dir)
+    }
 
     /**
      * Custom set method for concatenating FileCollections
      * @param combinedFiles
      */
-    def combinedFiles(FileCollection combinedFiles) {
-        this.combinedFiles = this.combinedFiles + combinedFiles
+    def combined(FileCollection combinedFiles) {
+        this.combined = this.combinedFiles + combinedFiles
     }
 
     def rename(Pattern sourceRegEx, String replaceWith) {
-        this.rename = new RegExpNameMapper(sourceRegEx, replaceWith)
+        this.nameTransformer = new RegExpNameMapper(
+                sourceRegEx,
+                FilenameUtils.removeExtension(replaceWith)
+        )
     }
 
     def rename(String sourceRegEx, String replaceWith) {
-        this.rename = new RegExpNameMapper(
+        this.nameTransformer = new RegExpNameMapper(
                 sourceRegEx,
                 FilenameUtils.removeExtension(replaceWith)
         )
@@ -68,18 +82,19 @@ class SplitTask extends DefaultTask {
         }
 
         lang.prefixes.each { Prefix prefix ->
-            // Transform prefix enum to lower case for nameing
+            // Transform prefix enum to lower case for naming
             final def prefixName = prefix.name().toLowerCase()
 
             // Assign default to rename
-            if (!this.rename) {
-                rename('(.*?)I[.]combined', "\$1I.${prefix.extension}")
+            if (!nameTransformer) {
+                nameTransformer = new RegExpNameMapper('(.*?)I[.]combined',
+                        "\$1I${prefix.extension}")
             }
 
             project.copy { c ->
-                c.from combinedFiles
+                c.from combined
                 c.into outputDir
-                c.rename rename
+                c.rename nameTransformer
                 c.filter { String line -> filerLine(line, prefixName) }
             }
         }
