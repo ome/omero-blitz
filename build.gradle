@@ -50,7 +50,7 @@ blitz {
 
 dsl {
     templateDir = "src/main/resources/templates"
-    mappingFiles = project.fileTree(dir: "", include: '**/*.ome.xml')
+    mappingFiles = project.fileTree(dir: "extracted/mappings", include: '**/*.ome.xml')
 
     generate {
         java {
@@ -72,9 +72,9 @@ task genObjReg(type: DslTask) {
     profile = "psql"
     template = file("src/main/resources/templates/java_obj_reg.vm")
     outputPath = file("src/generated/java")
-    omeXmlFiles =  files(dir: 'extracted/mappings', include: '**/*.ome.xml')
+    omeXmlFiles =  fileTree(dir: "extracted/mappings", include: '**/*.ome.xml')
     formatOutput = { st ->
-        "${st.getPackage()}/${st.getShortname()}.java"
+        "${st.getShortname()}.java"
     }
 }
 
