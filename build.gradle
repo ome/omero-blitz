@@ -1,18 +1,10 @@
-buildscript {
-    repositories {
-        jcenter()
-        mavenLocal()
-    }
+plugins {
+    id 'java'
+    id 'maven-publish'
 
-    dependencies {
-        classpath 'org.openmicroscopy:dslplugin:1.0'
-    }
+    id 'org.openmicroscopy.blitzplugin' version '1.0'
+    id 'org.openmicroscopy.dslplugin' version '1.0'
 }
-
-
-apply plugin: 'java'
-apply plugin: 'maven-publish'
-apply plugin: 'org.openmicroscopy.blitzplugin'
 
 group 'openmicroscopy.com'
 version '1.0-SNAPSHOT'
@@ -44,14 +36,46 @@ sourceSets {
 
 blitz {
     api {
-        java { s ->
-            s.language 'java'
-            s.outputDir 'src/generated/interfaces'
+        java {
+            language 'java'
+            outputDir 'src/generated/interfaces'
         }
 
-        ice { i ->
-            i.language 'ice'
-            i.outputDir 'src/generated/ice'
+        ice {
+            language 'ice'
+            outputDir 'src/generated/ice'
         }
     }
 }
+
+dsl {
+    templateDir = "src/main/resources/templates"
+    mappingFiles = project.fileTree(dir: "", include: '**/*.ome.xml')
+
+    generate {
+        java {
+            template = "object.vm"
+            outputPath = 'src/generated/java'
+            formatOutput = { st ->
+                "${st.getPackage()}/${st.getShortname()}.java"
+            }
+        }
+
+        hibernate {
+            template = "cfg.vm"
+            outFile = "hibernate.cfg.xml"
+        }
+    }
+}
+
+task genObjReg(type: DslTask) {
+    profile = "psql"
+    template = file("src/main/resources/templates/java_obj_reg.vm")
+    outputPath = file("src/generated/java")
+    omeXmlFiles =  files(dir: 'extracted/mappings', include: '**/*.ome.xml')
+    formatOutput = { st ->
+        "${st.getPackage()}/${st.getShortname()}.java"
+    }
+}
+
+// compileJava.dependsOn()
