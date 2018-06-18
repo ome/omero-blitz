@@ -2,8 +2,8 @@ plugins {
     id 'java'
     id 'maven-publish'
 
-    id 'org.openmicroscopy.blitzplugin' version '1.0'
     id 'org.openmicroscopy.dslplugin' version '1.0'
+    id 'org.openmicroscopy.blitzplugin' version '1.0'
 }
 
 group 'openmicroscopy.com'
@@ -14,7 +14,6 @@ sourceCompatibility = 1.8
 repositories {
     mavenCentral()
     mavenLocal()
-    maven { url 'http://artifacts.openmicroscopy.org/artifactory/maven/' }
     maven { url 'http://repo.boundlessgeo.com/main/' }
 }
 
@@ -50,15 +49,12 @@ blitz {
 
 dsl {
     templateDir = "src/main/resources/templates"
-    mappingFiles = project.fileTree(dir: "extracted/mappings", include: '**/*.ome.xml')
+    mappingFiles = project.fileTree(dir: "${buildDir}/extracted/mappings", include: '**/*.ome.xml')
 
     generate {
-        java {
-            template = "object.vm"
-            outputPath = 'src/generated/java'
-            formatOutput = { st ->
-                "${st.getPackage()}/${st.getShortname()}.java"
-            }
+        javaIceMap {
+            template = "java_ice_map.vm"
+            outFile = project.file("src/generated/java/omero/util/IceMap.java")
         }
 
         hibernate {
@@ -68,14 +64,14 @@ dsl {
     }
 }
 
-task genObjReg(type: DslTask) {
-    profile = "psql"
-    template = file("src/main/resources/templates/java_obj_reg.vm")
-    outputPath = file("src/generated/java")
-    omeXmlFiles =  fileTree(dir: "extracted/mappings", include: '**/*.ome.xml')
-    formatOutput = { st ->
-        "${st.getShortname()}.java"
-    }
-}
+//task genObjReg(type: DslTask) {
+//    profile = "psql"
+//    template = file("src/main/resources/templates/java_obj_reg.vm")
+//    outputPath = file("src/generated/java")
+//    omeXmlFiles = fileTree(dir: "extracted/mappings", include: '**/*.ome.xml')
+//    formatOutput = { st ->
+//        "${st.getShortname()}.java"
+//    }
+//}
 
 // compileJava.dependsOn()
