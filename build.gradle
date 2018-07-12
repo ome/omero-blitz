@@ -48,13 +48,13 @@ blitz {
     api {
         java {
             language "java"
-            outputDir 'src/generated/java/omero/model'
+            outputDir "src/generated/java/omero/model"
         }
 
         ice {
             language "ice"
-            outputDir 'src/generated/slice'
-            rename "\1$.ice"
+            outputDir "src/generated/slice"
+            outputName "\$1"
         }
     }
 }
