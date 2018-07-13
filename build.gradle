@@ -53,7 +53,7 @@ blitz {
 
         ice {
             language "ice"
-            outputDir "src/generated/slice"
+            outputDir "src/generated/slice/omero/model"
             outputName "\$1"
         }
     }
@@ -86,7 +86,7 @@ slice {
     java {
         set1 {
             // srcDir = file("src/main/slice")
-            include = ["src/main/slice"]
+            include = ["src/main/slice", "src/generated/slice"]
             files = fileTree(dir: "src/main/slice", include: "**/*.ice")
         }
 
