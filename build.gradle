@@ -85,13 +85,7 @@ slice {
     output = file("src/generated/java")
     java {
         set1 {
-            // srcDir = file("src/main/slice")
-            include = ["src/main/slice", "src/generated/slice"]
-            files = fileTree(dir: "src/main/slice", include: "**/*.ice")
-        }
-
-        set2 {
-            srcDir = file("src/generated/slice")
+            include = ["src/generated/slice", "src/main/slice"]
         }
     }
 }
