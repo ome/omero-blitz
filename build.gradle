@@ -12,8 +12,8 @@ buildscript {
 plugins {
     id "java"
     id 'maven-publish'
-    id 'org.openmicroscopy.dslplugin' version '0.1.0'
-    id 'org.openmicroscopy.blitzplugin' version '0.1.0'
+    id 'org.openmicroscopy.dsl' version '0.1.0'
+    id 'org.openmicroscopy.blitz' version '0.1.0'
 }
 
 apply plugin: "com.zeroc.gradle.ice-builder.slice"
@@ -62,9 +62,6 @@ blitz {
 dsl {
     templateFiles fileTree(dir: "src/main/resources/templates",
             include: '**/*.vm')
-
-    mappingFiles fileTree(dir: "${buildDir}/extracted/mappings",
-            include: '**/*.ome.xml')
 
     outputPath = "src/generated"
 
