@@ -44,26 +44,34 @@ sourceSets {
     }
 }
 
+/**
+ * Creates .combined files that can then be split into sources.
+ * In this instance, we're splitting out .java and .ice files
+ * from .combined files.
+ **/
 blitz {
+    outputPath "src/generated"
+
     api {
         java {
             language "java"
-            outputDir "src/generated/java/omero/model"
+            outputPath "java/omero/model"
         }
 
         ice {
             language "ice"
-            outputDir "src/generated/slice/omero/model"
+            outputPath file("src/main/slice/omero/model")
             outputName "\$1"
         }
     }
 }
 
 dsl {
-    templateFiles fileTree(dir: "src/main/resources/templates",
-            include: '**/*.vm')
-
-    outputPath = "src/generated"
+    templateFiles fileTree(
+            dir: "src/main/resources/templates",
+            include: '**/*.vm'
+    )
+    outputPath "src/generated"
 
     resource {
         iceMap {
@@ -79,22 +87,33 @@ dsl {
 }
 
 slice {
-    output = file("src/generated/java")
     java {
         set1 {
-            include = ["src/generated/slice", "src/main/slice"]
+            include = [
+                    "src/generated/slice",
+                    "src/main/slice"
+            ]
         }
     }
 }
 
-//task genObjReg(type: DslTask) {
-//    profile = "psql"
-//    template = file("src/main/resources/templates/java_obj_reg.vm")
-//    outputPath = file("src/generated/java")
-//    omeXmlFiles = fileTree(dir: "extracted/mappings", include: '**/*.ome.xml')
-//    formatOutput = { st ->
-//        "${st.getShortname()}.java"
-//    }
-//}
+afterEvaluate {
+    if (slice.iceVersion.contains('3.7')) {
+        slice.output = file('src/generated/ice37')
+        dependencies.add('compile', 'com.zeroc:glacier2:3.7.+')
+        sourceSets.main.java {
+            srcDirs 'src/main/ice37', slice.output
+        }
 
-// compileJava.dependsOn()
+    } else if (slice.iceVersion.contains('3.6')) {
+        slice.output = file('src/generated/ice36')
+        dependencies.add('compile', 'com.zeroc:glacier2:3.6.+')
+        sourceSets.main.java {
+            srcDirs 'src/main/ice36', slice.output
+        }
+    }
+}
+
+// Set compileSlice to depend on the generation of ice files from "splitIce"
+tasks.compileSlice.dependsOn "splitIce"
+

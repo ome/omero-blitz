@@ -19,7 +19,7 @@ import ome.formats.importer.ImportLibrary;
 import ome.formats.importer.OMEROWrapper;
 import ome.formats.importer.util.ErrorHandler; // Was previously cli for sending debug text
 import ome.formats.importer.util.ErrorHandler.EXCEPTION_EVENT;
-import omero.model.Pixels;
+import ome.model.core.Pixels;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
