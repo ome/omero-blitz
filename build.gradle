@@ -60,7 +60,7 @@ blitz {
 
         ice {
             language "ice"
-            outputPath file("src/main/slice/omero/model")
+            outputPath "slice/omero/model"
             outputName "\$1"
         }
     }
@@ -88,12 +88,12 @@ dsl {
 
 slice {
     java {
-        set1 {
-            include = [
-                    "src/generated/slice",
-                    "src/main/slice"
-            ]
-        }
+        include = [
+                "src/generated/slice",
+                "src/main/slice"
+        ]
+        files = fileTree(dir: "src/generated/slice", include: '**/*.ice') +
+                fileTree(dir: "src/main/slice", include: '**/*.ice')
     }
 }
 

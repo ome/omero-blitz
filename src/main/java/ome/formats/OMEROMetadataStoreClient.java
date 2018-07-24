@@ -24,8 +24,37 @@
 
 package ome.formats;
 
-import Glacier2.CannotCreateSessionException;
-import Glacier2.PermissionDeniedException;
+import static omero.rtypes.rbool;
+import static omero.rtypes.rdouble;
+import static omero.rtypes.rint;
+import static omero.rtypes.rlong;
+import static omero.rtypes.rstring;
+import static omero.rtypes.rtime;
+
+import static ome.formats.model.UnitsFactory.convertElectricPotential;
+import static ome.formats.model.UnitsFactory.convertFrequency;
+import static ome.formats.model.UnitsFactory.convertLength;
+import static ome.formats.model.UnitsFactory.convertPower;
+import static ome.formats.model.UnitsFactory.convertPressure;
+import static ome.formats.model.UnitsFactory.convertTemperature;
+import static ome.formats.model.UnitsFactory.convertTime;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.Map.Entry;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+
 import loci.formats.IFormatReader;
 import loci.formats.ImageReader;
 import loci.formats.meta.IMinMaxStore;
@@ -46,8 +75,6 @@ import ome.formats.model.ReferenceProcessor;
 import ome.formats.model.ShapeProcessor;
 import ome.formats.model.TargetProcessor;
 import ome.formats.model.WellProcessor;
-import ome.model.annotations.Annotation;
-import ome.model.core.Image;
 import ome.units.quantity.ElectricPotential;
 import ome.units.quantity.Frequency;
 import ome.units.quantity.Length;
@@ -71,8 +98,8 @@ import ome.xml.model.primitives.Color;
 import ome.xml.model.primitives.NonNegativeInteger;
 import ome.xml.model.primitives.NonNegativeLong;
 import ome.xml.model.primitives.PercentFraction;
-import ome.xml.model.primitives.PositiveFloat;
 import ome.xml.model.primitives.PositiveInteger;
+import ome.xml.model.primitives.PositiveFloat;
 import ome.xml.model.primitives.Timestamp;
 import omero.RBool;
 import omero.RDouble;
@@ -81,6 +108,7 @@ import omero.RLong;
 import omero.RString;
 import omero.RTime;
 import omero.ServerError;
+import omero.client;
 import omero.api.IAdminPrx;
 import omero.api.IContainerPrx;
 import omero.api.IQueryPrx;
@@ -94,66 +122,116 @@ import omero.api.RawPixelsStorePrx;
 import omero.api.ServiceFactoryPrx;
 import omero.api.ServiceInterfacePrx;
 import omero.api.ThumbnailStorePrx;
-import omero.client;
 import omero.constants.METADATASTORE;
 import omero.grid.InteractiveProcessorPrx;
 import omero.metadatastore.IObjectContainer;
+import omero.model.AcquisitionMode;
+import omero.model.Annotation;
+import omero.model.Arc;
+import omero.model.ArcType;
+import omero.model.Binning;
+import omero.model.BooleanAnnotation;
+import omero.model.Channel;
+import omero.model.CommentAnnotation;
+import omero.model.ContrastMethod;
+import omero.model.Correction;
+import omero.model.Dataset;
 import omero.model.DatasetI;
+import omero.model.Detector;
+import omero.model.DetectorSettings;
+import omero.model.DetectorType;
+import omero.model.Dichroic;
+import omero.model.DimensionOrder;
+import omero.model.DoubleAnnotation;
+import omero.model.Ellipse;
+import omero.model.Experiment;
+import omero.model.ExperimentType;
+import omero.model.ExperimenterGroup;
+import omero.model.Filament;
+import omero.model.FilamentType;
+import omero.model.FileAnnotation;
+import omero.model.FilesetJobLink;
+import omero.model.Filter;
+import omero.model.FilterSet;
+import omero.model.FilterType;
+import omero.model.Folder;
+import omero.model.Format;
+import omero.model.GenericExcitationSource;
 import omero.model.IObject;
+import omero.model.Illumination;
+import omero.model.Image;
+import omero.model.ImagingEnvironment;
+import omero.model.Immersion;
+import omero.model.Instrument;
+import omero.model.Label;
+import omero.model.Laser;
+import omero.model.LaserMedium;
+import omero.model.LaserType;
+import omero.model.LightEmittingDiode;
+import omero.model.LightPath;
+import omero.model.LightSettings;
+import omero.model.Line;
+import omero.model.ListAnnotation;
+import omero.model.LogicalChannel;
+import omero.model.LongAnnotation;
+import omero.model.MapAnnotation;
+import omero.model.Mask;
+import omero.model.Medium;
+import omero.model.MicrobeamManipulation;
+import omero.model.MicrobeamManipulationType;
+import omero.model.Microscope;
+import omero.model.MicroscopeType;
+import omero.model.Objective;
+import omero.model.ObjectiveSettings;
+import omero.model.OriginalFile;
 import omero.model.Permissions;
+import omero.model.Pixels;
+import omero.model.PixelsType;
+import omero.model.PlaneInfo;
+import omero.model.Plate;
+import omero.model.PlateAcquisition;
+import omero.model.Point;
+import omero.model.Polygon;
+import omero.model.Polyline;
+import omero.model.Project;
 import omero.model.ProjectI;
+import omero.model.Pulse;
+import omero.model.Reagent;
+import omero.model.Rectangle;
+import omero.model.Roi;
+import omero.model.Screen;
 import omero.model.ScreenI;
+import omero.model.StageLabel;
+import omero.model.TagAnnotation;
+import omero.model.TermAnnotation;
+import omero.model.TimestampAnnotation;
+import omero.model.TransmittanceRange;
 import omero.model.TransmittanceRangeI;
+import omero.model.Well;
+import omero.model.WellSample;
+import omero.model.XmlAnnotation;
 import omero.sys.EventContext;
 import omero.sys.ParametersI;
 import omero.util.IceMapper;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.TreeMap;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-
-import static ome.formats.model.UnitsFactory.convertElectricPotential;
-import static ome.formats.model.UnitsFactory.convertFrequency;
-import static ome.formats.model.UnitsFactory.convertLength;
-import static ome.formats.model.UnitsFactory.convertPower;
-import static ome.formats.model.UnitsFactory.convertPressure;
-import static ome.formats.model.UnitsFactory.convertTemperature;
-import static ome.formats.model.UnitsFactory.convertTime;
-import static omero.rtypes.rbool;
-import static omero.rtypes.rdouble;
-import static omero.rtypes.rint;
-import static omero.rtypes.rlong;
-import static omero.rtypes.rstring;
-import static omero.rtypes.rtime;
+import Glacier2.CannotCreateSessionException;
+import Glacier2.PermissionDeniedException;
 
 /**
  * Client side implementation of the Bio-Formats {@link MetadataStore}. It is
  * responsible for handling metadata from Bio-Formats and maintaining
  * communication with an OMERO server.
- *
  * @author Brian Loranger, brain at lifesci.dundee.ac.uk
  * @author Chris Allan, callan at lifesci.dundee.ac.uk
  */
 public class OMEROMetadataStoreClient
-        implements MetadataStore, IMinMaxStore, IObjectContainerStore {
+        implements MetadataStore, IMinMaxStore, IObjectContainerStore
+{
 
-    /**
-     * Logger for this class
-     */
+    /** Logger for this class */
     private Logger log = LoggerFactory.getLogger(OMEROMetadataStoreClient.class);
 
     private MetadataStorePrx delegate;
@@ -164,24 +242,18 @@ public class OMEROMetadataStoreClient
      */
     private Long groupID = null;
 
-    /**
-     * Our IObject container cache.
-     */
+    /** Our IObject container cache. */
     private Map<LSID, IObjectContainer> containerCache =
             new TreeMap<LSID, IObjectContainer>(new OMEXMLModelComparator());
 
-    /**
-     * Our LSID reference cache.
-     */
+    /** Our LSID reference cache. */
     private Map<LSID, List<LSID>> referenceCache =
             new HashMap<LSID, List<LSID>>();
 
     private Map<LSID, Set<LSID>> referenceCacheCheck =
             new HashMap<LSID, Set<LSID>>();
 
-    /**
-     * Our authoritative LSID container cache.
-     */
+    /** Our authoritative LSID container cache. */
     private Map<Class<? extends IObject>, Map<String, IObjectContainer>>
             authoritativeContainerCache =
             new HashMap<Class<? extends IObject>, Map<String, IObjectContainer>>();
@@ -194,14 +266,10 @@ public class OMEROMetadataStoreClient
 
     private LSID screenKey;
 
-    /**
-     * Our model processors. Will be called on saveToDB().
-     */
+    /** Our model processors. Will be called on saveToDB(). */
     private List<ModelProcessor> modelProcessors;
 
-    /**
-     * Bio-Formats reader that's populating us.
-     */
+    /** Bio-Formats reader that's populating us. */
     private IFormatReader reader;
 
     private OMEROMetadataStoreClientRoot pixelsList = new OMEROMetadataStoreClientRoot();
@@ -221,90 +289,60 @@ public class OMEROMetadataStoreClient
     private IRenderingSettingsPrx iSettings;
     private ThumbnailStorePrx thumbnailStore;
 
-    /**
-     * Our enumeration provider.
-     */
+    /** Our enumeration provider. */
     private EnumerationProvider enumProvider;
 
-    /**
-     * Our OMERO model object provider.
-     */
+    /** Our OMERO model object provider. */
     private InstanceProvider instanceProvider;
 
-    /**
-     * Current pixels ID we're writing planes for.
-     */
+    /** Current pixels ID we're writing planes for. */
     private Long currentPixId;
 
-    /**
-     * Annotations from the user for use by model processors.
-     */
+    /** Annotations from the user for use by model processors. */
     private List<Annotation> userSpecifiedAnnotations;
 
-    /**
-     * Image/Plate name the user specified for use by model processors.
-     */
+    /** Image/Plate name the user specified for use by model processors. */
     private String userSpecifiedName;
 
-    /**
-     * Image/Plate description the user specified for use by model processors.
-     */
+    /** Image/Plate description the user specified for use by model processors. */
     private String userSpecifiedDescription;
 
-    /**
-     * Filename of the log file where services will save logging output.
-     */
+    /** Filename of the log file where services will save logging output. */
     private String logFilename;
 
-    /**
-     * Token passed together with the log file name into the call context.
-     */
+    /** Token passed together with the log file name into the call context. */
     private String token;
 
-    /**
-     * Linkage target for all Images/Plates for use by model processors.
-     */
+    /** Linkage target for all Images/Plates for use by model processors. */
     private IObject userSpecifiedTarget;
 
-    /**
-     * Physical pixel sizes the user specified for use by model processors.
-     */
+    /** Physical pixel sizes the user specified for use by model processors. */
     private Double[] userSpecifiedPhysicalPixelSizes;
 
-    /**
-     * Image channel minimums and maximums.
-     */
+    /** Image channel minimums and maximums. */
     private double[][][] imageChannelGlobalMinMax;
 
-    /**
-     * Executor that will run our keep alive task.
-     */
+    /** Executor that will run our keep alive task. */
     private ScheduledThreadPoolExecutor executor;
 
-    /**
-     * Emission filter LSID suffix.
+    /** Emission filter LSID suffix.
      * See {@link #setFilterSetEmissionFilterRef(String, int, int, int)}
      * for an explanation of its usage.
      */
     public static final String OMERO_EMISSION_FILTER_SUFFIX =
             ":OMERO_EMISSION_FILTER";
 
-    /**
-     * Excitation filter LSID suffix.
+    /** Excitation filter LSID suffix.
      * See {@link #setFilterSetExcitationFilterRef(String, int, int, int)}
      * for an explanation of its usage.
      */
     public static final String OMERO_EXCITATION_FILTER_SUFFIX =
             ":OMERO_EXCITATION_FILTER";
 
-    /**
-     * The default longest side of a thumbnail in OMERO.insight.
-     */
+    /** The default longest side of a thumbnail in OMERO.insight. */
     private static final int DEFAULT_INSIGHT_THUMBNAIL_LONGEST_SIDE = 96;
 
-    /**
-     * Keep alive runnable, pings all services.
-     */
+    /** Keep alive runnable, pings all services. */
     private ClientKeepAlive keepAlive = new ClientKeepAlive();
 
     /**
@@ -323,8 +361,10 @@ public class OMEROMetadataStoreClient
         return keepAlive;
     }
 
-    private void resetPixelsId(Long pixId) throws ServerError {
-        if (pixId != null && !pixId.equals(currentPixId)) {
+    private void resetPixelsId(Long pixId) throws ServerError
+    {
+        if (pixId != null && !pixId.equals(currentPixId))
+        {
             rawPixelStore.setPixelsId(pixId, true);
             currentPixId = pixId;
         }
@@ -350,18 +390,25 @@ public class OMEROMetadataStoreClient
     /**
      * Initialize all services needed
      *
-     * @param manageLifecycle Whether or not to call the {@link Thread#start()} method on
-     *                        the {@link #keepAlive} instance. This will be set to false
-     *                        when an {@link omero.client} or a {@link ServiceFactoryPrx}
-     *                        instance is provided to {@link #initialize(client)} since the
-     *                        assumption is that the consumer will take care of the keep
-     *                        alive. In that case, {@link #closeServices()} should be called
-     *                        when importing is finished.
-     * @param group           Value to pass set in {@link #callCtx}
+     * @param manageLifecycle
+     *
+     *            Whether or not to call the {@link Thread#start()} method on
+     *            the {@link #keepAlive} instance. This will be set to false
+     *            when an {@link omero.client} or a {@link ServiceFactoryPrx}
+     *            instance is provided to {@link #initialize(client)} since the
+     *            assumption is that the consumer will take care of the keep
+     *            alive. In that case, {@link #closeServices()} should be called
+     *            when importing is finished.
+     *
+     *  @param group
+     *
+     *            Value to pass set in {@link #callCtx}
+     *
      * @throws ServerError
      */
     private void initializeServices(boolean manageLifecycle)
-            throws ServerError {
+            throws ServerError
+    {
 
         closeServices();
         Map<String, String> callCtx = new HashMap<String, String>();
@@ -409,8 +456,10 @@ public class OMEROMetadataStoreClient
         //checkImmersions();
 
         // Start our keep alive executor
-        if (manageLifecycle) {
-            if (executor == null) {
+        if (manageLifecycle)
+        {
+            if (executor == null)
+            {
                 executor = new ScheduledThreadPoolExecutor(1);
                 executor.scheduleWithFixedDelay(keepAlive, 60, 60, TimeUnit.SECONDS);
             }
@@ -422,11 +471,17 @@ public class OMEROMetadataStoreClient
      * simpler helper for the {@link #getDefaultBatchSize()} and
      * {@link #getDefaultBlockSize()} methods.
      */
-    private int getDefaultInt(String key, int def) {
-        if (c != null) {
-            try {
+    private int getDefaultInt(String key, int def)
+    {
+        if (c != null)
+        {
+            try
+            {
                 return Integer.valueOf(c.getProperty(key));
-            } catch (Exception e) {
+            }
+
+            catch (Exception e)
+            {
                 // pass. Return default
             }
 
@@ -438,7 +493,8 @@ public class OMEROMetadataStoreClient
      * @return user-configured "omero.batch_size" or {@link omero.constants.DEFAULTBATCHSIZE}
      * if none is set.
      */
-    public int getDefaultBatchSize() {
+    public int getDefaultBatchSize()
+    {
         return getDefaultInt("omero.batch_size", omero.constants.DEFAULTBATCHSIZE.value);
     }
 
@@ -446,14 +502,16 @@ public class OMEROMetadataStoreClient
      * @return user-configured "omero.block_size" or {@link omero.constants.DEFAULTBLOCKSIZE}
      * if none is set.
      */
-    public int getDefaultBlockSize() {
+    public int getDefaultBlockSize()
+    {
         return getDefaultInt("omero.block_size", omero.constants.DEFAULTBLOCKSIZE.value);
     }
 
     /**
      * @return IQuery proxy
      */
-    public IQueryPrx getIQuery() {
+    public IQueryPrx getIQuery()
+    {
         return iQuery;
     }
 
@@ -484,12 +542,12 @@ public class OMEROMetadataStoreClient
      * Initializes the MetadataStore with an already logged in, ready to go
      * service factory. When finished with this instance, close stateful
      * services via {@link #closeServices()}.
-     *
      * @param serviceFactory The factory. Mustn't be <code>null</code>.
      * @throws ServerError if the services could not be initialized
      */
     public void initialize(ServiceFactoryPrx serviceFactory)
-            throws ServerError {
+            throws ServerError
+    {
         if (serviceFactory == null)
             throw new IllegalArgumentException("No factory.");
         this.serviceFactory = serviceFactory;
@@ -505,7 +563,8 @@ public class OMEROMetadataStoreClient
      * @throws ServerError if the services could not be initialized
      */
     public void initialize(omero.client c)
-            throws ServerError {
+            throws ServerError
+    {
         this.c = c;
         c.setAgent("OMERO.importer");
         serviceFactory = c.getSession();
@@ -520,18 +579,19 @@ public class OMEROMetadataStoreClient
      *
      * @param username User's omename.
      * @param password User's password.
-     * @param server   Server hostname.
-     * @param port     Server port.
+     * @param server Server hostname.
+     * @param port Server port.
      * @throws CannotCreateSessionException If there is a session error when
-     *                                      creating the OMERO Blitz client object.
-     * @throws PermissionDeniedException    If there is a problem logging the user
-     *                                      in.
-     * @throws ServerError                  If there is a critical error communicating with the
-     *                                      server.
+     * creating the OMERO Blitz client object.
+     * @throws PermissionDeniedException If there is a problem logging the user
+     * in.
+     * @throws ServerError If there is a critical error communicating with the
+     * server.
      */
     public void initialize(String username, String password,
                            String server, int port)
-            throws CannotCreateSessionException, PermissionDeniedException, ServerError {
+            throws CannotCreateSessionException, PermissionDeniedException, ServerError
+    {
         // Always make this an unsecure session
         initialize(username, password, server, port, false);
     }
@@ -544,22 +604,24 @@ public class OMEROMetadataStoreClient
      *
      * @param username User's omename.
      * @param password User's password.
-     * @param server   Server hostname.
-     * @param port     Server port.
+     * @param server Server hostname.
+     * @param port Server port.
      * @param isSecure is this session secure
      * @throws CannotCreateSessionException If there is a session error when
-     *                                      creating the OMERO Blitz client object.
-     * @throws PermissionDeniedException    If there is a problem logging the user
-     *                                      in.
-     * @throws ServerError                  If there is a critical error communicating with the
-     *                                      server.
+     * creating the OMERO Blitz client object.
+     * @throws PermissionDeniedException If there is a problem logging the user
+     * in.
+     * @throws ServerError If there is a critical error communicating with the
+     * server.
      */
     public void initialize(String username, String password,
                            String server, int port, boolean isSecure)
-            throws CannotCreateSessionException, PermissionDeniedException, ServerError {
+            throws CannotCreateSessionException, PermissionDeniedException, ServerError
+    {
         secure(server, port);
         c.createSession(username, password);
-        if (!isSecure) {
+        if (!isSecure)
+        {
             unsecure();
         }
         initializeServices(true);
@@ -574,23 +636,25 @@ public class OMEROMetadataStoreClient
      *
      * @param username User's omename.
      * @param password User's password.
-     * @param server   Server hostname.
-     * @param port     Server port.
-     * @param group    User's current group.
+     * @param server Server hostname.
+     * @param port Server port.
+     * @param group User's current group.
      * @param isSecure is this session secure
      * @throws CannotCreateSessionException If there is a session error when
-     *                                      creating the OMERO Blitz client object.
-     * @throws PermissionDeniedException    If there is a problem logging the user
-     *                                      in.
-     * @throws ServerError                  If there is a critical error communicating with the
-     *                                      server.
+     * creating the OMERO Blitz client object.
+     * @throws PermissionDeniedException If there is a problem logging the user
+     * in.
+     * @throws ServerError If there is a critical error communicating with the
+     * server.
      */
     public void initialize(String username, String password,
                            String server, int port, Long group, boolean isSecure)
-            throws CannotCreateSessionException, PermissionDeniedException, ServerError {
+            throws CannotCreateSessionException, PermissionDeniedException, ServerError
+    {
         secure(server, port);
         serviceFactory = c.createSession(username, password);
-        if (!isSecure) {
+        if (!isSecure)
+        {
             unsecure();
         }
         setGroup(group);
@@ -602,15 +666,16 @@ public class OMEROMetadataStoreClient
      * Use this method only with unsecure sessions. When finished with this
      * instance, close all resources via {@link #logout}
      *
-     * @param server     Server hostname.
-     * @param port       Server port.
+     * @param server Server hostname.
+     * @param port Server port.
      * @param sessionKey Bind session key.
      * @throws CannotCreateSessionException if a session could not be created
-     * @throws PermissionDeniedException    if the services may not be initialized
-     * @throws ServerError                  if the services could not be initialized
+     * @throws PermissionDeniedException if the services may not be initialized
+     * @throws ServerError if the services could not be initialized
      */
     public void initialize(String server, int port, String sessionKey)
-            throws CannotCreateSessionException, PermissionDeniedException, ServerError {
+            throws CannotCreateSessionException, PermissionDeniedException, ServerError
+    {
         // Always make this an 'unsecure' session
         initialize(server, port, sessionKey, false);
     }
@@ -620,22 +685,26 @@ public class OMEROMetadataStoreClient
      * Use this method only with unsecure sessions. When finished with this
      * instance, close all resources via {@link #logout}
      *
-     * @param server     Server hostname.
-     * @param port       Server port.
+     * @param server Server hostname.
+     * @param port Server port.
      * @param sessionKey Bind session key.
-     * @param isSecure   if a secure session should be created
+     * @param isSecure if a secure session should be created
      * @throws CannotCreateSessionException if a session could not be created
-     * @throws PermissionDeniedException    if the services may not be initialized
-     * @throws ServerError                  if the services could not be initialized
+     * @throws PermissionDeniedException if the services may not be initialized
+     * @throws ServerError if the services could not be initialized
      */
     public void initialize(String server, int port, String sessionKey, boolean isSecure)
-            throws CannotCreateSessionException, PermissionDeniedException, ServerError {
+            throws CannotCreateSessionException, PermissionDeniedException, ServerError
+    {
         secure(server, port);
         serviceFactory = c.joinSession(sessionKey);
-        if (!isSecure) {
-            try {
+        if (!isSecure)
+        {
+            try
+            {
                 unsecure();
-            } catch (Ice.ConnectionRefusedException cre) {
+            } catch (Ice.ConnectionRefusedException cre)
+            {
                 log.warn("Cannot fallback. Using secure connection", cre);
             }
         }
@@ -646,11 +715,14 @@ public class OMEROMetadataStoreClient
     /**
      * First phase of login is to make an SSL connection. Creates an
      * {@link omero.client} instance and calls {@link omero.client#setAgent(String)}
-     *
      * @param server
      * @param port
+     * @throws CannotCreateSessionException
+     * @throws PermissionDeniedException
+     * @throws ServerError
      */
-    private void secure(String server, int port)  {
+    private void secure(String server, int port) throws CannotCreateSessionException,
+            PermissionDeniedException, ServerError {
         log.info(String.format(
                 "Attempting initial SSL connection to %s:%d",
                 server, port));
@@ -681,14 +753,17 @@ public class OMEROMetadataStoreClient
      *
      * @return See above.
      */
-    public ServiceFactoryPrx getServiceFactory() {
+    public ServiceFactoryPrx getServiceFactory()
+    {
         return serviceFactory;
     }
 
     /**
      * Pings all registered OMERO Blitz proxies.
+     *
      */
-    public void ping() {
+    public void ping()
+    {
         try {
             serviceFactory.keepAllAlive(new ServiceInterfacePrx[]
                     {iQuery, iAdmin, rawFileStore, rawPixelStore, thumbnailStore,
@@ -705,13 +780,14 @@ public class OMEROMetadataStoreClient
     // SERVER-SIDE API
     //
 
-    public void setCurrentLogFile(String logFilename, String token) {
+    public void setCurrentLogFile(String logFilename, String token)
+    {
         this.logFilename = logFilename;
         this.token = token;
     }
 
     public void updateFileSize(OriginalFile file, long size) throws ServerError {
-        file = (OriginalFile) iQuery.get("OriginalFile", file.getId());
+        file = (OriginalFile) iQuery.get("OriginalFile", file.getId().getValue());
         file.setSize(rlong(size));
         iUpdate.saveObject(file);
     }
@@ -725,7 +801,8 @@ public class OMEROMetadataStoreClient
      *
      * @param enumProvider Enumeration provider to use.
      */
-    public void setEnumerationProvider(EnumerationProvider enumProvider) {
+    public void setEnumerationProvider(EnumerationProvider enumProvider)
+    {
         this.enumProvider = enumProvider;
     }
 
@@ -734,7 +811,8 @@ public class OMEROMetadataStoreClient
      *
      * @return See above.
      */
-    public EnumerationProvider getEnumerationProvider() {
+    public EnumerationProvider getEnumerationProvider()
+    {
         return enumProvider;
     }
 
@@ -743,7 +821,8 @@ public class OMEROMetadataStoreClient
      *
      * @param instanceProvider the instance provider to use
      */
-    public void setInstanceProvider(InstanceProvider instanceProvider) {
+    public void setInstanceProvider(InstanceProvider instanceProvider)
+    {
         this.instanceProvider = instanceProvider;
     }
 
@@ -752,7 +831,8 @@ public class OMEROMetadataStoreClient
      *
      * @return See above.
      */
-    public InstanceProvider getInstanceProvider() {
+    public InstanceProvider getInstanceProvider()
+    {
         return instanceProvider;
     }
 
@@ -767,8 +847,9 @@ public class OMEROMetadataStoreClient
      * @return RType or <code>null</code> if <code>value</code> is
      * <code>null</code>.
      */
-    public RInt toRType(Integer value) {
-        return value == null ? null : rint(value);
+    public RInt toRType(Integer value)
+    {
+        return value == null? null : rint(value);
     }
 
     private omero.model.Time toRType(Time timeIncrement) {
@@ -797,8 +878,9 @@ public class OMEROMetadataStoreClient
      * @return RType or <code>null</code> if <code>value</code> is
      * <code>null</code>.
      */
-    public RInt toRType(NonNegativeInteger value) {
-        return value == null ? null : rint(value.getValue());
+    public RInt toRType(NonNegativeInteger value)
+    {
+        return value == null? null : rint(value.getValue());
     }
 
     /**
@@ -808,8 +890,9 @@ public class OMEROMetadataStoreClient
      * @return RType or <code>null</code> if <code>value</code> is
      * <code>null</code>.
      */
-    public RLong toRType(NonNegativeLong value) {
-        return value == null ? null : rlong(value.getValue());
+    public RLong toRType(NonNegativeLong value)
+    {
+        return value == null? null : rlong(value.getValue());
     }
 
     /**
@@ -819,8 +902,9 @@ public class OMEROMetadataStoreClient
      * @return RType or <code>null</code> if <code>value</code> is
      * <code>null</code>.
      */
-    public RDouble toRType(PositiveFloat value) {
-        return value == null ? null : rdouble(value.getValue());
+    public RDouble toRType(PositiveFloat value)
+    {
+        return value == null? null : rdouble(value.getValue());
     }
 
     /**
@@ -830,8 +914,9 @@ public class OMEROMetadataStoreClient
      * @return RType or <code>null</code> if <code>value</code> is
      * <code>null</code>.
      */
-    public RDouble toRType(PercentFraction value) {
-        return value == null ? null : rdouble(value.getValue());
+    public RDouble toRType(PercentFraction value)
+    {
+        return value == null? null : rdouble(value.getValue());
     }
 
     /**
@@ -841,84 +926,85 @@ public class OMEROMetadataStoreClient
      * @return RType or <code>null</code> if <code>value</code> is
      * <code>null</code>.
      */
-    public RLong toRType(Long value) {
-        return value == null ? null : rlong(value);
+    public RLong toRType(Long value)
+    {
+        return value == null? null : rlong(value);
     }
 
     /**
      * Transforms a Java type into the corresponding OMERO RType.
-     *
      * @param value Java concrete type value.
      * @return RType or <code>null</code> if <code>value</code> is
      * <code>null</code>.
      */
-    public RString toRType(String value) {
-        return value == null ? null : rstring(value);
+    public RString toRType(String value)
+    {
+        return value == null? null : rstring(value);
     }
 
     /**
      * Transforms a Java type into the corresponding OMERO RType.
-     *
      * @param value Java concrete type value.
      * @return RType or <code>null</code> if <code>value</code> is
      * <code>null</code>.
      */
-    public RBool toRType(Boolean value) {
-        return value == null ? null : rbool(value);
+    public RBool toRType(Boolean value)
+    {
+        return value == null? null : rbool(value);
     }
 
     /**
      * Transforms a Java type into the corresponding OMERO RType.
-     *
      * @param value Java concrete type value.
      * @return RType or <code>null</code> if <code>value</code> is
      * <code>null</code>.
      */
-    public RDouble toRType(Double value) {
-        return value == null ? null : rdouble(value);
+    public RDouble toRType(Double value)
+    {
+        return value == null? null : rdouble(value);
     }
 
     /**
      * Transforms a Java type into the corresponding OMERO RType.
-     *
      * @param value Java concrete type value.
      * @return RType or <code>null</code> if <code>value</code> is
      * <code>null</code>.
      */
-    public RDouble toRType(Float value) {
-        return value == null ? null : rdouble(Double.parseDouble(value.toString()));
+    public RDouble toRType(Float value)
+    {
+        return value == null? null : rdouble(Double.parseDouble(value.toString()));
     }
 
     /**
      * Transforms a Java type into the corresponding OMERO RType.
-     *
      * @param value Java concrete type value.
      * @return RType or <code>null</code> if <code>value</code> is
      * <code>null</code>.
      */
-    public RTime toRType(Timestamp value) {
-        return value == null ? null : rtime(value.asInstant().getMillis());
+    public RTime toRType(Timestamp value)
+    {
+        return value == null? null : rtime(value.asInstant().getMillis());
     }
 
     /**
      * Transforms a Java type into the corresponding OMERO RType.
-     *
      * @param value Java concrete type value.
      * @return RType or <code>null</code> if <code>value</code> is
      * <code>null</code>.
      */
-    public RString toRType(NamingConvention value) {
+    public RString toRType(NamingConvention value)
+    {
         return value == null ? null : rstring(value.getValue());
     }
 
     /**
      * Transforms a Java type into the corresponding OMERO RType.
-     *
      * @param schemaTransform Java concrete type value.
      * @return RType or <code>null</code> if <code>value</code> is
      * <code>null</code>.
      */
-    public omero.model.AffineTransform toRType(AffineTransform schemaTransform) {
+    public omero.model.AffineTransform toRType(AffineTransform schemaTransform)
+    {
         if (schemaTransform == null ||
                 schemaTransform.getA00() == null || schemaTransform.getA01() == null || schemaTransform.getA02() == null ||
                 schemaTransform.getA10() == null || schemaTransform.getA11() == null || schemaTransform.getA12() == null) {
@@ -936,12 +1022,12 @@ public class OMEROMetadataStoreClient
 
     /**
      * Transforms a Java type into the corresponding OMERO RType.
-     *
      * @param value Java concrete type value.
      * @return RType or <code>null</code> if <code>value</code> is
      * <code>null</code>.
      */
-    public RInt toRType(Color value) {
+    public RInt toRType(Color value)
+    {
         return toRType(value.getValue());
     }
 
@@ -949,7 +1035,8 @@ public class OMEROMetadataStoreClient
     // CLOSING
     //
 
-    private void closeQuietly(omero.api.StatefulServiceInterfacePrx prx) {
+    private void closeQuietly(omero.api.StatefulServiceInterfacePrx prx)
+    {
         if (prx != null) {
             try {
                 prx.close();
@@ -964,14 +1051,15 @@ public class OMEROMetadataStoreClient
 
     /**
      * Closes all stateful services.
-     * <p>
+     *
      * This method should be preferred over {@link #logout()} when initialized
      * via an {@link omero.client} or a {@link ServiceFactoryPrx} instance.
      *
      * @see #initialize(client)
      * @see #initialize(ServiceFactoryPrx)
      */
-    public void closeServices() {
+    public void closeServices()
+    {
         closeQuietly(rawFileStore);
         rawFileStore = null;
 
@@ -988,7 +1076,7 @@ public class OMEROMetadataStoreClient
 
     /**
      * Destroys the sessionFactory and closes the client.
-     * <p>
+     *
      * This method should not be called when initialized via an
      * {@link omero.client} or a {@link ServiceFactoryPrx} instance. * @see
      * #initialize(client)
@@ -996,15 +1084,18 @@ public class OMEROMetadataStoreClient
      * @see #initialize(ServiceFactoryPrx)
      * @see #closeServices()
      */
-    public void logout() {
+    public void logout()
+    {
         closeServices();
-        if (c != null) {
+        if (c != null)
+        {
             log.debug("closing client session.");
             c.closeSession();
             c = null;
             log.debug("client closed.");
         }
-        if (executor != null) {
+        if (executor != null)
+        {
             log.debug("Logout called, shutting keep alive down.");
             executor.shutdown();
             executor = null;
@@ -1016,32 +1107,35 @@ public class OMEROMetadataStoreClient
      * Prepares the metadata store using existing metadata that has been
      * pre-registered by OMERO.fs. The expected graph should be fully loaded:
      * <ul>
-     * <li>Image</li>
-     * <li>Pixels</li>
+     *   <li>Image</li>
+     *   <li>Pixels</li>
      * </ul>
      * <b>NOTE:</b> An execution of <code>prepare()</code> is only valid for
      * a <b>SINGLE</b> <code>importImage()</code> execution. Following
      * <code>importImage()</code> the existing metadata map will be reset
      * regardless of success or failure.
-     *
      * @param existingMetadata Map of imageIndex or series vs. populated Image
-     *                         source graph with the fetched objects defined above.
+     * source graph with the fetched objects defined above.
      */
-    public void prepare(Map<Integer, Image> existingMetadata) {
+    public void prepare(Map<Integer, Image> existingMetadata)
+    {
         this.existingMetadata = existingMetadata;
     }
 
     /**
      * Actually performs the preparation logic during createRoot().
      */
-    private void prepare() {
+    private void prepare()
+    {
         // Sanity check
-        if (existingMetadata == null) {
+        if (existingMetadata == null)
+        {
             return;
         }
 
         IObjectContainer container;
-        for (Entry<Integer, Image> entry : existingMetadata.entrySet()) {
+        for (Entry<Integer, Image> entry : existingMetadata.entrySet())
+        {
             Image image = entry.getValue();
             Integer series = entry.getKey();
             // Reset the image acquisition date as it has been inserted
@@ -1053,13 +1147,15 @@ public class OMEROMetadataStoreClient
             indexes.put(Index.IMAGE_INDEX, series);
             container = getIObjectContainer(Image.class, indexes);
             container.sourceObject = image;
-            if (log.isDebugEnabled()) {
+            if (log.isDebugEnabled())
+            {
                 log.debug(String.format("Prepared(%d) == %s,%s",
                         series, container.sourceObject, container.LSID));
             }
             container = getIObjectContainer(Pixels.class, indexes);
             container.sourceObject = pixels;
-            if (log.isDebugEnabled()) {
+            if (log.isDebugEnabled())
+            {
                 log.debug(String.format("Prepared(%d) == %s,%s",
                         series, container.sourceObject, container.LSID));
             }
@@ -1074,8 +1170,10 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#createRoot()
      */
     @Override
-    public void createRoot() {
-        try {
+    public void createRoot()
+    {
+        try
+        {
             log.debug("Creating root!");
             initializeServices(false); // Reset group
             authoritativeContainerCache =
@@ -1094,9 +1192,13 @@ public class OMEROMetadataStoreClient
             delegate.createRoot();
             // Ensures that any prepared objects go into the container cache
             prepare();
-        } catch (ServerError e) {
+        }
+        catch (ServerError e)
+        {
             throw new RuntimeException(e);
-        } finally {
+        }
+        finally
+        {
             existingMetadata = null;
         }
     }
@@ -1104,33 +1206,37 @@ public class OMEROMetadataStoreClient
     /* (non-Javadoc)
      * @see loci.formats.meta.MetadataStore#getRoot(omx.xml.meta.MetadataRoot)
      */
-    public MetadataRoot getRoot() {
+    public MetadataRoot getRoot()
+    {
         return pixelsList;
     }
 
     /**
      * Retrieves a given enumeration from the current enumeration provider.
-     *
      * @param klass Enumeration type.
      * @param value Enumeration value.
      * @return See above.
      */
-    private IObject getEnumeration(Class<? extends IObject> klass, String value) {
+    private IObject getEnumeration(Class<? extends IObject> klass, String value)
+    {
         return enumProvider.getEnumeration(klass, value, false);
     }
 
     /**
      * Checks for duplicate authoritative LSIDs for a given class in the
      * container cache.
-     *
      * @param klass Filter class for IObjectContainer types.
-     * @param lsid  LSID to check against.
+     * @param lsid LSID to check against.
      */
-    private void checkDuplicateLSID(Class<? extends IObject> klass, String lsid) {
-        if (log.isTraceEnabled()) {
+    private void checkDuplicateLSID(Class<? extends IObject> klass, String lsid)
+    {
+        if (log.isTraceEnabled())
+        {
             List<IObjectContainer> containers = getIObjectContainers(klass);
-            for (IObjectContainer container : containers) {
-                if (container.LSID.equals(lsid)) {
+            for (IObjectContainer container : containers)
+            {
+                if (container.LSID.equals(lsid))
+                {
                     log.trace(String.format("Duplicate LSID %s exists in %s,%s",
                             lsid, container.sourceObject, container.LSID));
                     return;
@@ -1142,16 +1248,17 @@ public class OMEROMetadataStoreClient
     /* (non-Javadoc)
      * @see ome.formats.model.IObjectContainerStore#getReader()
      */
-    public IFormatReader getReader() {
+    public IFormatReader getReader()
+    {
         return reader;
     }
 
     /**
      * Retrieves a Format enumeration for the current reader's type.
-     *
      * @return See above.
      */
-    private Format getImageFormat() {
+    private Format getImageFormat()
+    {
         IFormatReader reader = getReader();
         if (reader instanceof ImageReader) {
             reader = ((ImageReader) reader).getReader();
@@ -1166,14 +1273,16 @@ public class OMEROMetadataStoreClient
      * @see ome.formats.model.IObjectContainerStore#setReader(loci.formats.IFormatReader)
      */
     @Override
-    public void setReader(IFormatReader reader) {
+    public void setReader(IFormatReader reader)
+    {
         this.reader = reader;
     }
 
     /* (non-Javadoc)
      * @see ome.formats.model.IObjectContainerStore#getUserSpecifiedAnnotations()
      */
-    public List<Annotation> getUserSpecifiedAnnotations() {
+    public List<Annotation> getUserSpecifiedAnnotations()
+    {
         return userSpecifiedAnnotations;
     }
 
@@ -1181,21 +1290,24 @@ public class OMEROMetadataStoreClient
      * @see ome.formats.model.IObjectContainerStore#setUserSpecifiedAnnotations(java.util.List)
      */
     @Override
-    public void setUserSpecifiedAnnotations(List<Annotation> annotations) {
+    public void setUserSpecifiedAnnotations(List<Annotation> annotations)
+    {
         this.userSpecifiedAnnotations = annotations;
     }
 
     /* (non-Javadoc)
      * @see ome.formats.model.IObjectContainerStore#getUserSpecifiedPlateName()
      */
-    public String getUserSpecifiedName() {
+    public String getUserSpecifiedName()
+    {
         return userSpecifiedName;
     }
 
     /* (non-Javadoc)
      * @see ome.formats.model.IObjectContainerStore#getUserSpecifiedName()
      */
-    public String getUserSpecifiedImageName() {
+    public String getUserSpecifiedImageName()
+    {
         return userSpecifiedName;
     }
 
@@ -1203,8 +1315,10 @@ public class OMEROMetadataStoreClient
      * @see ome.formats.model.IObjectContainerStore#setUserSpecifiedName(java.lang.String)
      */
     @Override
-    public void setUserSpecifiedName(String name) {
-        if (log.isDebugEnabled()) {
+    public void setUserSpecifiedName(String name)
+    {
+        if (log.isDebugEnabled())
+        {
             log.debug("Using user specified name: " + name);
         }
         this.userSpecifiedName = name;
@@ -1213,7 +1327,8 @@ public class OMEROMetadataStoreClient
     /* (non-Javadoc)
      * @see ome.formats.model.IObjectContainerStore#getUserSpecifiedDescription()
      */
-    public String getUserSpecifiedDescription() {
+    public String getUserSpecifiedDescription()
+    {
         return userSpecifiedDescription;
     }
 
@@ -1221,8 +1336,10 @@ public class OMEROMetadataStoreClient
      * @see ome.formats.model.IObjectContainerStore#setUserSpecifiedDescription(java.lang.String)
      */
     @Override
-    public void setUserSpecifiedDescription(String description) {
-        if (log.isDebugEnabled()) {
+    public void setUserSpecifiedDescription(String description)
+    {
+        if (log.isDebugEnabled())
+        {
             log.debug("Using user specified description: " + description);
         }
         this.userSpecifiedDescription = description;
@@ -1231,7 +1348,8 @@ public class OMEROMetadataStoreClient
     /* (non-Javadoc)
      * @see ome.formats.model.IObjectContainerStore#getUserSpecifiedTarget()
      */
-    public IObject getUserSpecifiedTarget() {
+    public IObject getUserSpecifiedTarget()
+    {
         return userSpecifiedTarget;
     }
 
@@ -1239,7 +1357,8 @@ public class OMEROMetadataStoreClient
      * @see ome.formats.model.IObjectContainerStore#setUserSpecifiedTarget(omero.model.IObject)
      */
     @Override
-    public void setUserSpecifiedTarget(IObject target) {
+    public void setUserSpecifiedTarget(IObject target)
+    {
         if (target instanceof Screen && null != screenKey) {
             log.info("deleting screen ref in favor of user-specified one");
             referenceCache.remove(screenKey);
@@ -1250,7 +1369,8 @@ public class OMEROMetadataStoreClient
     /* (non-Javadoc)
      * @see ome.formats.model.IObjectContainerStore#getUserSpecifiedPhysicalPixelSizes()
      */
-    public Double[] getUserSpecifiedPhysicalPixelSizes() {
+    public Double[] getUserSpecifiedPhysicalPixelSizes()
+    {
         return userSpecifiedPhysicalPixelSizes;
     }
 
@@ -1260,60 +1380,63 @@ public class OMEROMetadataStoreClient
     @Override
     public void setUserSpecifiedPhysicalPixelSizes(Double physicalSizeX,
                                                    Double physicalSizeY,
-                                                   Double physicalSizeZ) {
+                                                   Double physicalSizeZ)
+    {
         userSpecifiedPhysicalPixelSizes =
-                new Double[]{physicalSizeX, physicalSizeY, physicalSizeZ};
+                new Double[] { physicalSizeX, physicalSizeY, physicalSizeZ };
     }
 
     /**
      * Retrieves the current list of model processors the metadata store is
      * using.
-     *
      * @return See above.
      */
-    public List<ModelProcessor> getModelProcessors() {
+    public List<ModelProcessor> getModelProcessors()
+    {
         return modelProcessors;
     }
 
     /**
      * Sets the current set of model processors.
-     *
      * @param modelProcessors List of model processors to use.
      */
-    public void setModelProcessors(List<ModelProcessor> modelProcessors) {
+    public void setModelProcessors(List<ModelProcessor> modelProcessors)
+    {
         this.modelProcessors = modelProcessors;
     }
 
     /**
      * Removes a model processor from use.
-     *
      * @param processor Model processor to remove.
      */
-    public void removeModelProcessor(ModelProcessor processor) {
+    public void removeModelProcessor(ModelProcessor processor)
+    {
         modelProcessors.remove(processor);
     }
 
     /**
      * Adds a model processor to the end of the processing chain.
-     *
      * @param processor Model processor to add.
      * @return <code>true</code> as specified by {@link Collection#add(Object)}
      */
-    public boolean addModelProcessor(ModelProcessor processor) {
+    public boolean addModelProcessor(ModelProcessor processor)
+    {
         return modelProcessors.add(processor);
     }
 
     /* (non-Javadoc)
      * @see ome.formats.model.IObjectContainerStore#getContainerCache()
      */
-    public Map<LSID, IObjectContainer> getContainerCache() {
+    public Map<LSID, IObjectContainer> getContainerCache()
+    {
         return containerCache;
     }
 
     /* (non-Javadoc)
      * @see ome.formats.model.IObjectContainerStore#getReferenceCache()
      */
-    public Map<LSID, List<LSID>> getReferenceCache() {
+    public Map<LSID, List<LSID>> getReferenceCache()
+    {
         return Collections.unmodifiableMap(referenceCache);
     }
 
@@ -1321,23 +1444,25 @@ public class OMEROMetadataStoreClient
      * @see ome.formats.model.IObjectContainerStore#getAuthoritativeContainerCache()
      */
     public Map<Class<? extends IObject>, Map<String, IObjectContainer>>
-    getAuthoritativeContainerCache() {
+    getAuthoritativeContainerCache()
+    {
         return authoritativeContainerCache;
     }
 
     /**
      * Adds a container to the authoritative LSID cache.
-     *
-     * @param klass     Type of container we're adding.
-     * @param lsid      String LSID of the container.
+     * @param klass Type of container we're adding.
+     * @param lsid String LSID of the container.
      * @param container Container to add.
      */
     private void addAuthoritativeContainer(Class<? extends IObject> klass,
                                            String lsid,
-                                           IObjectContainer container) {
+                                           IObjectContainer container)
+    {
         Map<String, IObjectContainer> lsidContainerMap =
                 authoritativeContainerCache.get(klass);
-        if (lsidContainerMap == null) {
+        if (lsidContainerMap == null)
+        {
             lsidContainerMap = new HashMap<String, IObjectContainer>();
             authoritativeContainerCache.put(klass, lsidContainerMap);
         }
@@ -1346,25 +1471,29 @@ public class OMEROMetadataStoreClient
 
     /**
      * Adds a reference to the reference cache.
-     *
      * @param source Source LSID to add.
      * @param target Target LSID to add.
      */
     @Override
-    public void addReference(LSID source, LSID target) {
+    public void addReference(LSID source, LSID target)
+    {
         List<LSID> targets = null;
         Set<LSID> targetsCheck = null;
-        if (referenceCache.containsKey(source)) {
+        if (referenceCache.containsKey(source))
+        {
             targets = referenceCache.get(source);
             targetsCheck = referenceCacheCheck.get(source);
-        } else {
+        }
+        else
+        {
             targets = new ArrayList<LSID>();
             targetsCheck = new HashSet<LSID>();
             referenceCache.put(source, targets);
             referenceCacheCheck.put(source, targetsCheck);
         }
         // Adding to a list is VERY slow.
-        if (!targetsCheck.contains(target)) {
+        if (!targetsCheck.contains(target))
+        {
             targetsCheck.add(target);
             targets.add(target);
         }
@@ -1373,7 +1502,8 @@ public class OMEROMetadataStoreClient
     /* (non-Javadoc)
      * @see ome.formats.model.IObjectContainerStore#getReferenceStringCache()
      */
-    public Map<String, String[]> getReferenceStringCache() {
+    public Map<String, String[]> getReferenceStringCache()
+    {
         return referenceStringCache;
     }
 
@@ -1381,29 +1511,32 @@ public class OMEROMetadataStoreClient
      * @see ome.formats.model.IObjectContainerStore#setReferenceStringCache(Map<String, String[]>)
      */
     @Override
-    public void setReferenceStringCache(Map<String, String[]> referenceStringCache) {
+    public void setReferenceStringCache(Map<String, String[]> referenceStringCache)
+    {
         this.referenceStringCache = referenceStringCache;
     }
 
     /**
      * Retrieves an OMERO Blitz source object for a given Java class and
      * indexes.
-     *
-     * @param klass   Source object class.
+     * @param klass Source object class.
      * @param indexes Indexes into the OME-XML data model.
      * @return See above.
      */
     @SuppressWarnings("unchecked")
-    private <T extends IObject> T getSourceObject(Class<T> klass, LinkedHashMap<Index, Integer> indexes) {
+    private <T extends IObject> T getSourceObject(Class<T> klass, LinkedHashMap<Index, Integer> indexes)
+    {
         return (T) getIObjectContainer(klass, indexes).sourceObject;
     }
 
     /* (non-Javadoc)
      * @see ome.formats.model.IObjectContainerStore#getSourceObject(ome.util.LSID)
      */
-    public IObject getSourceObject(LSID LSID) {
+    public IObject getSourceObject(LSID LSID)
+    {
         IObjectContainer o = containerCache.get(LSID);
-        if (o == null) {
+        if (o == null)
+        {
             return null;
         }
         return o.sourceObject;
@@ -1413,10 +1546,12 @@ public class OMEROMetadataStoreClient
      * @see ome.formats.model.IObjectContainerStore#getSourceObjects(java.lang.Class)
      */
     @SuppressWarnings("unchecked")
-    public <T extends IObject> List<T> getSourceObjects(Class<T> klass) {
+    public <T extends IObject> List<T> getSourceObjects(Class<T> klass)
+    {
         List<IObjectContainer> containers = getIObjectContainers(klass);
         List<T> toReturn = new ArrayList<T>(containers.size());
-        for (IObjectContainer container : containers) {
+        for (IObjectContainer container: containers)
+        {
             toReturn.add((T) container.sourceObject);
         }
         return toReturn;
@@ -1425,9 +1560,11 @@ public class OMEROMetadataStoreClient
     /* (non-Javadoc)
      * @see ome.formats.model.IObjectContainerStore#hasReference(ome.util.LSID, ome.util.LSID)
      */
-    public boolean hasReference(LSID source, LSID target) {
+    public boolean hasReference(LSID source, LSID target)
+    {
         if (!referenceCache.containsKey(source)
-                || !referenceCache.get(source).contains(target)) {
+                || !referenceCache.get(source).contains(target))
+        {
             return false;
         }
         return true;
@@ -1435,16 +1572,18 @@ public class OMEROMetadataStoreClient
 
     /**
      * Sets the path, name and repo in the pixels table.
-     *
      * @param pixelsId the ID of the Pixels object
-     * @param file     the file's filename, with path in the repository
-     * @param repo     the file's repository's UUID
+     * @param file the file's filename, with path in the repository
+     * @param repo the file's repository's UUID
      * @throws ServerError in the event of a server error
      */
     public void setPixelsFile(long pixelsId, String file, String repo) throws ServerError {
-        try {
+        try
+        {
             delegate.setPixelsFile(pixelsId, file, repo);
-        } catch (Exception e) {
+        }
+        catch (Exception e)
+        {
             log.error("Server error setting extended properties for Pixels:" +
                     pixelsId + " Target file:" + file, e);
             throw e instanceof RuntimeException ?
@@ -1459,7 +1598,8 @@ public class OMEROMetadataStoreClient
      * @throws ServerError if the group could not be set or the services initialized accordingly
      */
     public void setCurrentGroup(long groupID)
-            throws ServerError {
+            throws ServerError
+    {
         setGroup(groupID);
         initializeServices(false);
     }
@@ -1469,10 +1609,11 @@ public class OMEROMetadataStoreClient
      *
      * @return List of ExperimenterGroups the user is in
      * @throws Exception If an error occurred while trying to
-     *                   retrieve data from OMERO service.
+     * retrieve data from OMERO service.
      */
     List<ExperimenterGroup> getUserGroups()
-            throws ServerError {
+            throws ServerError
+    {
         List<ExperimenterGroup> myGroups = new ArrayList<ExperimenterGroup>();
         //Need method server side.
         ParametersI p = new ParametersI();
@@ -1504,7 +1645,8 @@ public class OMEROMetadataStoreClient
      * @return map of group id & name
      * @throws ServerError if the groups could not be mapped
      */
-    public Map<Long, String> mapUserGroups() throws ServerError {
+    public Map<Long, String> mapUserGroups() throws ServerError
+    {
         List<String> systemGroups = new ArrayList<String>();
         systemGroups.add("system");
         systemGroups.add("user");
@@ -1552,7 +1694,8 @@ public class OMEROMetadataStoreClient
      * @return the name of the default group
      * @throws ServerError if the default group could not be retrieved
      */
-    public String getDefaultGroupName() throws ServerError {
+    public String getDefaultGroupName() throws ServerError
+    {
         ExperimenterGroup currentDefaultGroup =
                 iAdmin.getDefaultGroup(eventContext.userId);
 
@@ -1579,9 +1722,10 @@ public class OMEROMetadataStoreClient
         Permissions perm = currentDefaultGroup.getDetails().getPermissions();
 
         if (perm.isGroupRead()) {
-            if (perm.isGroupWrite()) groupLevel = ImportEvent.GROUP_COLLAB_READ_LINK;
+            if (perm.isGroupWrite())  groupLevel = ImportEvent.GROUP_COLLAB_READ_LINK;
             else groupLevel = ImportEvent.GROUP_COLLAB_READ;
-        } else if (perm.isWorldRead()) {
+        }
+        else if (perm.isWorldRead()) {
             groupLevel = ImportEvent.GROUP_PUBLIC;
         } else {
             groupLevel = ImportEvent.GROUP_PRIVATE;
@@ -1592,10 +1736,13 @@ public class OMEROMetadataStoreClient
     /**
      * @return repository space as a long
      */
-    public long getRepositorySpace() {
-        try {
+    public long getRepositorySpace()
+    {
+        try
+        {
             return iRepoInfo.getFreeSpaceInKilobytes();
-        } catch (ServerError e) {
+        } catch (ServerError e)
+        {
             throw new RuntimeException(e);
         }
     }
@@ -1604,9 +1751,11 @@ public class OMEROMetadataStoreClient
      * Post processes the internal structure of the client side MetadataStore.
      * Should be called before {@link #saveToDB(FilesetJobLink)}.
      */
-    public void postProcess() {
+    public void postProcess()
+    {
         // Perform model processing
-        for (ModelProcessor processor : modelProcessors) {
+        for (ModelProcessor processor : modelProcessors)
+        {
             processor.process(this);
         }
     }
@@ -1614,20 +1763,23 @@ public class OMEROMetadataStoreClient
     /**
      * Updates the server side MetadataStore with a list of our objects and
      * references and saves them into the database.
-     *
      * @param link the link to save to the database
      * @return List of Pixels after database commit.
      */
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    public Map<String, List<IObject>> saveToDB(FilesetJobLink link) {
-        try {
+    @SuppressWarnings({ "unchecked", "rawtypes" })
+    public Map<String, List<IObject>> saveToDB(FilesetJobLink link)
+    {
+        try
+        {
             Collection<IObjectContainer> containers = containerCache.values();
             IObjectContainer[] containerArray =
                     containers.toArray(new IObjectContainer[containers.size()]);
 
-            if (log.isDebugEnabled()) {
+            if (log.isDebugEnabled())
+            {
                 log.debug("Starting containers....");
-                for (LSID key : containerCache.keySet()) {
+                for (LSID key : containerCache.keySet())
+                {
                     String s = String.format("%s == %s,%s",
                             key, containerCache.get(key).sourceObject,
                             containerCache.get(key).LSID);
@@ -1635,8 +1787,10 @@ public class OMEROMetadataStoreClient
                 }
 
                 log.debug("Starting references....");
-                for (String key : referenceStringCache.keySet()) {
-                    for (String value : referenceStringCache.get(key)) {
+                for (String key : referenceStringCache.keySet())
+                {
+                    for (String value : referenceStringCache.get(key))
+                    {
                         String s = String.format("%s == %s", key, value);
                         log.debug(s);
                     }
@@ -1652,18 +1806,20 @@ public class OMEROMetadataStoreClient
             int containerBatchCount = 0;
             int containerPointer = 0;
             log.info("Handling # of containers: {}", containerArray.length);
-            while (containerPointer < containerArray.length) {
+            while (containerPointer < containerArray.length)
+            {
                 int nObjects = (int) Math.min(
                         maxBatchSize, containerArray.length - containerPointer);
 
                 IObjectContainer[] batch = Arrays.copyOfRange(
-                        containerArray, containerPointer, containerPointer + nObjects);
+                        containerArray, containerPointer, containerPointer+nObjects);
 
                 delegate.updateObjects(batch);
                 containerPointer += nObjects;
 
                 containerBatchCount += 1;
-                if (containerBatchCount > 1) {
+                if (containerBatchCount > 1)
+                {
                     log.info("Starting containerBatch #{}", containerBatchCount);
                 }
             }
@@ -1677,14 +1833,15 @@ public class OMEROMetadataStoreClient
             while (referencePointer < referenceKeys.length) {
 
                 referenceBatchCount += 1;
-                if (referenceBatchCount > 1) {
+                if (referenceBatchCount > 1)
+                {
                     log.info("Starting referenceBatch #{}", referenceBatchCount);
                 }
 
                 Map<String, String[]> referenceBatch = new HashMap<String, String[]>();
                 int batchSize = (int) Math.min(
                         maxBatchSize, referenceKeys.length - referencePointer);
-                for (int i = 0; i < batchSize; i++) {
+                for (int i=0; i<batchSize; i++) {
                     String key = referenceKeys[referencePointer + i];
                     referenceBatch.put(key, referenceStringCache.get(key));
                 }
@@ -1695,20 +1852,25 @@ public class OMEROMetadataStoreClient
             Map<String, List<IObject>> rv = delegate.saveToDB(link);
             pixelsList = new OMEROMetadataStoreClientRoot((List) rv.get("Pixels"));
 
-            if (log.isDebugEnabled()) {
+            if (log.isDebugEnabled())
+            {
                 long pixelsId;
-                for (Pixels pixels : pixelsList) {
+                for (Pixels pixels : pixelsList)
+                {
                     pixelsId = pixels.getId().getValue();
-                    log.debug("Saved Pixels with ID: " + pixelsId);
+                    log.debug("Saved Pixels with ID: "  + pixelsId);
                 }
             }
             return rv;
-        } catch (ServerError e) {
+        }
+        catch (ServerError e)
+        {
             throw new RuntimeException(e);
         }
     }
 
-    public List<InteractiveProcessorPrx> launchProcessing() {
+    public List<InteractiveProcessorPrx> launchProcessing()
+    {
         try {
             return delegate.postProcess();
         } catch (Exception e) {
@@ -1723,14 +1885,16 @@ public class OMEROMetadataStoreClient
     /**
      * Helper method to retrieve an object from iQuery
      *
-     * @param <T>   the kind of model object to retrieve
+     * @param <T> the kind of model object to retrieve
      * @param klass the class of the model object
-     * @param id    the ID of the model object
+     * @param id the ID of the model object
      * @return the model object
      */
     @SuppressWarnings("unchecked")
-    public <T extends IObject> T getTarget(Class<T> klass, long id) {
-        try {
+    public <T extends IObject> T getTarget(Class<T> klass, long id)
+    {
+        try
+        {
             Map<String, String> allGroups = new HashMap<String, String>();
             allGroups.put("omero.group", "-1");
             T obj = (T) iQuery.get(klass.getName(), id, allGroups);
@@ -1745,7 +1909,9 @@ public class OMEROMetadataStoreClient
             }
             setCurrentGroup(grpID);
             return obj;
-        } catch (ServerError e) {
+        }
+        catch (ServerError e)
+        {
             throw new RuntimeException(e);
         }
     }
@@ -1754,22 +1920,27 @@ public class OMEROMetadataStoreClient
      * @param projectId
      * @return project with given id
      */
-    public Project getProject(long projectId) {
-        try {
+    public Project getProject(long projectId)
+    {
+        try
+        {
             return (Project) iQuery.get("Project", projectId);
-        } catch (ServerError e) {
+        }
+        catch (ServerError e)
+        {
             throw new RuntimeException(e);
         }
     }
 
     /**
-     * @param datasetName        the name of the dataset
+     * @param datasetName the name of the dataset
      * @param datasetDescription the description of the dataset
-     * @param project            the project in which the dataset is (if any)
+     * @param project the project in which the dataset is (if any)
      * @return the newly persisted dataset
      */
     public Dataset addDataset(String datasetName, String datasetDescription,
-                              Project project) {
+                              Project project)
+    {
         Dataset dataset = new DatasetI();
         if (datasetName.length() != 0)
             dataset.setName(toRType(datasetName));
@@ -1780,9 +1951,12 @@ public class OMEROMetadataStoreClient
             dataset.linkProject(p);
         }
 
-        try {
+        try
+        {
             return (Dataset) iUpdate.saveAndReturnObject(dataset);
-        } catch (ServerError e) {
+        }
+        catch (ServerError e)
+        {
             throw new RuntimeException(e);
         }
     }
@@ -1790,22 +1964,28 @@ public class OMEROMetadataStoreClient
     /**
      * @return - experimenter id
      */
-    public long getExperimenterID() {
+    public long getExperimenterID()
+    {
         return eventContext.userId;
     }
 
     /**
      * Retrieves a configuration value from the <code>IConfig</code> service.
-     *
      * @param key Key for the string encoded value.
      * @return String encoded configuration value.
      */
-    public String getConfigValue(String key) {
-        try {
+    public String getConfigValue(String key)
+    {
+        try
+        {
             return serviceFactory.getConfigService().getConfigValue(key);
-        } catch (omero.SecurityViolation sv) {
+        }
+        catch (omero.SecurityViolation sv)
+        {
             return null;
-        } catch (ServerError e) {
+        }
+        catch (ServerError e)
+        {
             throw new RuntimeException(e);
         }
     }
@@ -1813,16 +1993,21 @@ public class OMEROMetadataStoreClient
     /**
      * @return the screens
      */
-    public List<Screen> getScreens() {
-        try {
+    public List<Screen> getScreens()
+    {
+        try
+        {
             List<IObject> objects =
                     iContainer.loadContainerHierarchy(Screen.class.getName(), null, new ParametersI().exp(rlong(getExperimenterID())));
             List<Screen> screens = new ArrayList<Screen>(objects.size());
-            for (IObject object : objects) {
+            for (IObject object : objects)
+            {
                 screens.add((Screen) object);
             }
             return screens;
-        } catch (ServerError e) {
+        }
+        catch (ServerError e)
+        {
             throw new RuntimeException(e);
         }
     }
@@ -1831,19 +2016,24 @@ public class OMEROMetadataStoreClient
     /**
      * @return the projects
      */
-    public List<Project> getProjects() {
-        try {
+    public List<Project> getProjects()
+    {
+        try
+        {
             List<IObject> objects =
                     iContainer.loadContainerHierarchy(Project.class.getName(), null, new ParametersI().exp(rlong(getExperimenterID())));
             List<Project> projects = new ArrayList<Project>(objects.size());
-            for (IObject object : objects) {
+            for (IObject object : objects)
+            {
                 projects.add((Project) object);
             }
 
             Collections.sort(projects, new SortProjectsByName());
 
             return projects;
-        } catch (ServerError e) {
+        }
+        catch (ServerError e)
+        {
             throw new RuntimeException(e);
         }
     }
@@ -1852,15 +2042,18 @@ public class OMEROMetadataStoreClient
      * @param p the project whose datasets to get ({@code null} for orphaned datasets)
      * @return the datasets
      */
-    public List<Dataset> getDatasets(Project p) {
+    public List<Dataset> getDatasets(Project p)
+    {
         if (p.getId() == null || p.getId().getValue() == 0)
             return getDatasetsWithoutProjects();
-        try {
+        try
+        {
             List<Long> ids = new ArrayList<Long>(1);
             ids.add(p.getId().getValue());
             List<IObject> objects =
                     iContainer.loadContainerHierarchy(Project.class.getName(), ids, null);
-            if (objects.size() > 0) {
+            if (objects.size() > 0)
+            {
                 Project project = (Project) objects.get(0);
 
                 List<Dataset> datasets = project.linkedDatasetList();
@@ -1868,7 +2061,9 @@ public class OMEROMetadataStoreClient
                 return datasets;
             }
             return null;
-        } catch (ServerError e) {
+        }
+        catch (ServerError e)
+        {
             throw new RuntimeException(e);
         }
     }
@@ -1876,71 +2071,85 @@ public class OMEROMetadataStoreClient
     /**
      * @return the orphaned datasets
      */
-    public List<Dataset> getDatasetsWithoutProjects() {
-        try {
+    public List<Dataset> getDatasetsWithoutProjects()
+    {
+        try
+        {
             ParametersI param = new ParametersI();
             param.exp(rlong(getExperimenterID()));
             param.orphan();
             List<IObject> objects =
                     iContainer.loadContainerHierarchy(Project.class.getName(), null, param);
             List<Dataset> datasets = new ArrayList<Dataset>(0);
-            for (IObject object : objects) {
+            for (IObject object : objects)
+            {
                 if (object instanceof DatasetI)
                     datasets.add((Dataset) object);
             }
             return datasets;
-        } catch (ServerError e) {
+        }
+        catch (ServerError e)
+        {
             throw new RuntimeException(e);
         }
     }
 
     /**
-     * @param projectName        the name of the project
+     * @param projectName the name of the project
      * @param projectDescription the description of the project
      * @return the newly persisted project
      */
-    public Project addProject(String projectName, String projectDescription) {
+    public Project addProject(String projectName, String projectDescription)
+    {
         Project project = new ProjectI();
         if (projectName.length() != 0)
             project.setName(toRType(projectName));
         if (projectDescription.length() != 0)
             project.setDescription(toRType(projectDescription));
 
-        try {
+        try
+        {
             return (Project) iUpdate.saveAndReturnObject(project);
-        } catch (ServerError e) {
+        } catch (ServerError e)
+        {
             throw new RuntimeException(e);
         }
     }
 
     /**
-     * @param screenName        the name of the screen
+     * @param screenName the name of the screen
      * @param screenDescription the description of the screen
      * @return the newly persisted screen
      */
-    public Screen addScreen(String screenName, String screenDescription) {
+    public Screen addScreen(String screenName, String screenDescription)
+    {
         Screen screen = new ScreenI();
         if (screenName.length() != 0)
             screen.setName(toRType(screenName));
         if (screenDescription.length() != 0)
             screen.setDescription(toRType(screenDescription));
 
-        try {
+        try
+        {
             return (Screen) iUpdate.saveAndReturnObject(screen);
-        } catch (ServerError e) {
+        } catch (ServerError e)
+        {
             throw new RuntimeException(e);
         }
     }
 
     /**
      * Prepares the server side RawPixelsStore.
-     *
      * @param pixelsIds List of Pixels IDs we'll be populating.
      */
-    public void preparePixelsStore(List<Long> pixelsIds) {
-        try {
+    public void preparePixelsStore(List<Long> pixelsIds)
+    {
+        try
+        {
             rawPixelStore.prepare(pixelsIds);
-        } catch (ServerError e) {
+        }
+        catch (ServerError e)
+        {
             throw new RuntimeException(e);
         }
     }
@@ -1948,7 +2157,7 @@ public class OMEROMetadataStoreClient
     /**
      * Closes the active raw pixels store. Finalizing any open server side
      * resources.
-     * <p>
+     *
      * The call to close on the RawPixelsStorePrx may throw, in which case
      * the current import should be considered failed, since the saving of
      * the pixels server-side will have not completed successfully.
@@ -1956,11 +2165,15 @@ public class OMEROMetadataStoreClient
      * @throws ServerError if the pixel store could not be finalized or a new one created
      * @see <a href="https://trac.openmicroscopy.org/ome/ticket/5594">Trac ticket #5594</a>
      */
-    public void finalizePixelStore() throws ServerError {
-        if (rawPixelStore != null) {
-            try {
+    public void finalizePixelStore() throws ServerError
+    {
+        if (rawPixelStore != null)
+        {
+            try
+            {
                 rawPixelStore.close();
-            } finally {
+            } finally
+            {
                 rawPixelStore = null;
             }
         }
@@ -1969,54 +2182,54 @@ public class OMEROMetadataStoreClient
 
     /**
      * Retrieves the suggested tile size for a pixels set.
-     *
      * @param pixId Pixels set to write to.
      * @return Width and height of the tile as an array.
      * @throws ServerError If there is an error writing this tile to the
-     *                     server.
+     * server.
      */
     public int[] getTileSize(Long pixId)
-            throws ServerError {
+            throws ServerError
+    {
         resetPixelsId(pixId);
         return rawPixelStore.getTileSize();
     }
 
     /**
      * Writes a tile of pixels to the server.
-     *
-     * @param pixId    Pixels set to write to.
+     * @param pixId Pixels set to write to.
      * @param arrayBuf Byte array containing all pixels for this plane.
-     * @param z        Z offset within the Pixels set.
-     * @param c        Channel offset within the Pixels set.
-     * @param t        Timepoint offset within the Pixels set.
-     * @param x        X offset of the tile.
-     * @param y        Y offset of the tile.
-     * @param w        Width of the tile.
-     * @param h        Height of the tile.
+     * @param z Z offset within the Pixels set.
+     * @param c Channel offset within the Pixels set.
+     * @param t Timepoint offset within the Pixels set.
+     * @param x X offset of the tile.
+     * @param y Y offset of the tile.
+     * @param w Width of the tile.
+     * @param h Height of the tile.
      * @throws ServerError If there is an error writing this tile to the
-     *                     server.
+     * server.
      * @see #setPlane(Long, byte[], int, int, int)
      */
     public void setTile(Long pixId, byte[] arrayBuf, int z, int c, int t,
                         int x, int y, int w, int h)
-            throws ServerError {
+            throws ServerError
+    {
         resetPixelsId(pixId);
         rawPixelStore.setTile(arrayBuf, z, c, t, x, y, w, h);
     }
 
     /**
      * Writes a plane to the server.
-     *
-     * @param pixId    Pixels set to write to.
+     * @param pixId Pixels set to write to.
      * @param arrayBuf Byte array containing all pixels for this plane.
-     * @param z        Z offset within the Pixels set.
-     * @param c        Channel offset within the Pixels set.
-     * @param t        Timepoint offset within the Pixels set.
+     * @param z Z offset within the Pixels set.
+     * @param c Channel offset within the Pixels set.
+     * @param t Timepoint offset within the Pixels set.
      * @throws ServerError If there is an error writing this plane to the
-     *                     server.
+     * server.
      */
     public void setPlane(Long pixId, byte[] arrayBuf, int z, int c, int t)
-            throws ServerError {
+            throws ServerError
+    {
         resetPixelsId(pixId);
         rawPixelStore.setPlane(arrayBuf, z, c, t);
     }
@@ -2026,20 +2239,24 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setChannelGlobalMinMax(int channel, double minimum,
-                                       double maximum, int series) {
+                                       double maximum, int series)
+    {
         Pixels pixels =
                 (Pixels) getSourceObject(new LSID(Pixels.class, series));
-        if (imageChannelGlobalMinMax == null) {
+        if (imageChannelGlobalMinMax == null)
+        {
             int imageCount = countCachedContainers(Image.class);
             imageChannelGlobalMinMax = new double[imageCount][][];
         }
         double[][] channelGlobalMinMax = imageChannelGlobalMinMax[series];
-        if (channelGlobalMinMax == null) {
+        if (channelGlobalMinMax == null)
+        {
             imageChannelGlobalMinMax[series] = channelGlobalMinMax =
                     new double[pixels.getSizeC().getValue()][];
         }
         double[] globalMinMax = channelGlobalMinMax[channel];
-        if (globalMinMax == null) {
+        if (globalMinMax == null)
+        {
             imageChannelGlobalMinMax[series][channel] = globalMinMax =
                     new double[2];
         }
@@ -2049,13 +2266,15 @@ public class OMEROMetadataStoreClient
 
     /**
      * Updates a list of Pixels.
-     *
      * @param pixelsList List of Pixels to update.
      */
-    public void updatePixels(List<Pixels> pixelsList) {
-        try {
+    public void updatePixels(List<Pixels> pixelsList)
+    {
+        try
+        {
             List<IObject> objectList = new ArrayList<IObject>(pixelsList.size());
-            for (Pixels pixels : pixelsList) {
+            for (Pixels pixels : pixelsList)
+            {
                 pixels.unloadPixelsFileMaps();
                 pixels.unloadPlaneInfo();
                 pixels.unloadSettings();
@@ -2064,7 +2283,9 @@ public class OMEROMetadataStoreClient
                 objectList.add(pixels);
             }
             iUpdate.saveArray(objectList);
-        } catch (ServerError e) {
+        }
+        catch (ServerError e)
+        {
             throw new RuntimeException(e);
         }
     }
@@ -2073,10 +2294,14 @@ public class OMEROMetadataStoreClient
      * Sends all the minimums and maximums for all images processed so far to
      * the server.
      */
-    public void populateMinMax() {
-        try {
+    public void populateMinMax()
+    {
+        try
+        {
             delegate.populateMinMax(imageChannelGlobalMinMax);
-        } catch (ServerError e) {
+        }
+        catch (ServerError e)
+        {
             throw new RuntimeException(e);
         }
     }
@@ -2084,21 +2309,27 @@ public class OMEROMetadataStoreClient
     /**
      * Resets the defaults and generates thumbnails for a given set of Pixels
      * IDs.
-     *
-     * @param plateIds  Set of Plate IDs to reset defaults and thumbnails for.
+     * @param plateIds Set of Plate IDs to reset defaults and thumbnails for.
      * @param pixelsIds Set of Pixels IDs to reset defaults and thumbnails for.
      */
     public void resetDefaultsAndGenerateThumbnails(List<Long> plateIds,
-                                                   List<Long> pixelsIds) {
-        try {
-            if (plateIds.size() > 0) {
+                                                   List<Long> pixelsIds)
+    {
+        try
+        {
+            if (plateIds.size() > 0)
+            {
                 iSettings.resetDefaultsInSet("Plate", plateIds);
-            } else {
+            }
+            else
+            {
                 iSettings.resetDefaultsInSet("Pixels", pixelsIds);
             }
             thumbnailStore.createThumbnailsByLongestSideSet(
                     rint(DEFAULT_INSIGHT_THUMBNAIL_LONGEST_SIDE), pixelsIds);
-        } catch (ServerError e) {
+        }
+        catch (ServerError e)
+        {
             throw new RuntimeException(e);
         }
     }
@@ -2109,13 +2340,15 @@ public class OMEROMetadataStoreClient
      * @see ome.formats.model.IObjectContainerStore#getIObjectContainer(java.lang.Class, java.util.LinkedHashMap)
      */
     public IObjectContainer getIObjectContainer(Class<? extends IObject> klass,
-                                                LinkedHashMap<Index, Integer> indexes) {
+                                                LinkedHashMap<Index, Integer> indexes)
+    {
         // Transform an integer collection into an integer array without using
         // wrapper objects.
         Collection<Integer> indexValues = indexes.values();
         int[] indexesArray = new int[indexValues.size()];
         int i = 0;
-        for (Integer index : indexValues) {
+        for (Integer index : indexValues)
+        {
             indexesArray[i] = index;
             i++;
         }
@@ -2124,11 +2357,13 @@ public class OMEROMetadataStoreClient
         LSID lsid = new LSID(klass, indexesArray);
 
         Map<String, Integer> asString = new HashMap<String, Integer>();
-        for (Entry<Index, Integer> v : indexes.entrySet()) {
+        for (Entry<Index, Integer> v : indexes.entrySet())
+        {
             asString.put(v.getKey().toString(), v.getValue());
         }
 
-        if (!containerCache.containsKey(lsid)) {
+        if (!containerCache.containsKey(lsid))
+        {
             IObjectContainer c = new IObjectContainer();
             c.indexes = asString;
             c.LSID = lsid.toString();
@@ -2143,7 +2378,8 @@ public class OMEROMetadataStoreClient
      * @see ome.formats.model.IObjectContainerStore#removeIObjectContainer(ome.util.LSID)
      */
     @Override
-    public void removeIObjectContainer(LSID lsid) {
+    public void removeIObjectContainer(LSID lsid)
+    {
         containerCache.remove(lsid);
     }
 
@@ -2151,12 +2387,15 @@ public class OMEROMetadataStoreClient
      * @see ome.formats.model.IObjectContainerStore#getIObjectContainers(java.lang.Class)
      */
     @SuppressWarnings("unchecked")
-    public List<IObjectContainer> getIObjectContainers(Class<? extends IObject> klass) {
+    public List<IObjectContainer> getIObjectContainers(Class<? extends IObject> klass)
+    {
         Set<LSID> keys = containerCache.keySet();
         List<IObjectContainer> toReturn = new ArrayList<IObjectContainer>();
-        for (LSID key : keys) {
+        for (LSID key : keys)
+        {
             Class<? extends IObject> keyClass = key.getJavaClass();
-            if (keyClass != null && keyClass.equals(klass)) {
+            if (keyClass != null && keyClass.equals(klass))
+            {
                 toReturn.add(containerCache.get(key));
             }
         }
@@ -2166,11 +2405,11 @@ public class OMEROMetadataStoreClient
     /**
      * Performs the task of actual source object instantiation using
      * reflection.
-     *
      * @param klass Class to instantiate a source object for.
      * @return An OMERO Blitz model object.
      */
-    private <T extends IObject> T getSourceObjectInstance(Class<T> klass) {
+    private <T extends IObject> T getSourceObjectInstance(Class<T> klass)
+    {
         return instanceProvider.getInstance(klass);
     }
 
@@ -2179,31 +2418,41 @@ public class OMEROMetadataStoreClient
      */
     @SuppressWarnings("unchecked")
     public int countCachedContainers(Class<? extends IObject> klass,
-                                     int... indexes) {
-        if (klass == null) {
+                                     int... indexes)
+    {
+        if (klass == null)
+        {
             return new HashSet<IObjectContainer>(containerCache.values()).size();
         }
 
         int count = 0;
-        for (LSID lsid : containerCache.keySet()) {
+        for (LSID lsid : containerCache.keySet())
+        {
             Class<? extends IObject> lsidClass = lsid.getJavaClass();
-            if (lsidClass != null && lsidClass.equals(klass)) {
-                if (indexes == null) {
+            if (lsidClass != null && lsidClass.equals(klass))
+            {
+                if (indexes == null)
+                {
                     // We're just doing a class match, increment the count
                     count++;
-                } else {
+                }
+                else
+                {
                     // We're doing a class and index match, loop over and
                     // check the indexes based on the shortest array.
                     int[] lsidIndexes = lsid.getIndexes();
                     int n = Math.min(indexes.length, lsidIndexes.length);
                     boolean match = true;
-                    for (int i = 0; i < n; i++) {
-                        if (lsidIndexes[i] != indexes[i]) {
+                    for (int i = 0; i < n; i++)
+                    {
+                        if (lsidIndexes[i] != indexes[i])
+                        {
                             match = false;
                             break;
                         }
                     }
-                    if (match) {
+                    if (match)
+                    {
                         count++;
                     }
                 }
@@ -2216,31 +2465,41 @@ public class OMEROMetadataStoreClient
      * @see ome.formats.model.IObjectContainerStore#countCachedReferences(java.lang.Class, java.lang.Class)
      */
     public int countCachedReferences(Class<? extends IObject> source,
-                                     Class<? extends IObject> target) {
-        if (source == null && target == null) {
+                                     Class<? extends IObject> target)
+    {
+        if (source == null && target == null)
+        {
             int count = 0;
-            for (LSID key : referenceCache.keySet()) {
+            for (LSID key : referenceCache.keySet())
+            {
                 count += referenceCache.get(key).size();
             }
             return count;
         }
 
         int count = 0;
-        if (target == null) {
-            for (LSID lsid : referenceCache.keySet()) {
+        if (target == null)
+        {
+            for (LSID lsid : referenceCache.keySet())
+            {
                 Class<?> containerClass = lsid.getJavaClass();
-                if (containerClass.equals(source)) {
+                if (containerClass.equals(source))
+                {
                     count++;
                 }
             }
             return count;
         }
 
-        if (source == null) {
-            for (LSID sourceLSID : referenceCache.keySet()) {
-                for (LSID targetLSID : referenceCache.get(sourceLSID)) {
+        if (source == null)
+        {
+            for (LSID sourceLSID : referenceCache.keySet())
+            {
+                for (LSID targetLSID : referenceCache.get(sourceLSID))
+                {
                     Class<?> containerClass = targetLSID.getJavaClass();
-                    if (containerClass.equals(target)) {
+                    if (containerClass.equals(target))
+                    {
                         count++;
                     }
                 }
@@ -2248,12 +2507,16 @@ public class OMEROMetadataStoreClient
             return count;
         }
 
-        for (LSID sourceLSID : referenceCache.keySet()) {
+        for (LSID sourceLSID : referenceCache.keySet())
+        {
             Class<?> sourceClass = sourceLSID.getJavaClass();
-            if (sourceClass.equals(source)) {
-                for (LSID targetLSID : referenceCache.get(sourceLSID)) {
+            if (sourceClass.equals(source))
+            {
+                for (LSID targetLSID : referenceCache.get(sourceLSID))
+                {
                     Class<?> targetClass = targetLSID.getJavaClass();
-                    if (targetClass.equals(target)) {
+                    if (targetClass.equals(target))
+                    {
                         count++;
                     }
                 }
@@ -2276,12 +2539,12 @@ public class OMEROMetadataStoreClient
 
     /**
      * Retrieve Arc
-     *
-     * @param instrumentIndex  the index of the instrument
+     * @param instrumentIndex the index of the instrument
      * @param lightSourceIndex the index of the light source within the instrument
      * @return the arc
      */
-    private Arc getArc(int instrumentIndex, int lightSourceIndex) {
+    private Arc getArc(int instrumentIndex, int lightSourceIndex)
+    {
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
         indexes.put(Index.INSTRUMENT_INDEX, instrumentIndex);
@@ -2293,7 +2556,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setArcID(java.lang.String, int, int)
      */
     @Override
-    public void setArcID(String id, int instrumentIndex, int lightSourceIndex) {
+    public void setArcID(String id, int instrumentIndex, int lightSourceIndex)
+    {
         checkDuplicateLSID(Arc.class, id);
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
@@ -2309,7 +2573,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setArcLotNumber(String lotNumber, int instrumentIndex,
-                                int lightSourceIndex) {
+                                int lightSourceIndex)
+    {
         Arc o = getArc(instrumentIndex, lightSourceIndex);
         o.setLotNumber(toRType(lotNumber));
     }
@@ -2319,7 +2584,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setArcManufacturer(String manufacturer, int instrumentIndex,
-                                   int lightSourceIndex) {
+                                   int lightSourceIndex)
+    {
         Arc o = getArc(instrumentIndex, lightSourceIndex);
         o.setManufacturer(toRType(manufacturer));
     }
@@ -2329,7 +2595,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setArcModel(String model, int instrumentIndex,
-                            int lightSourceIndex) {
+                            int lightSourceIndex)
+    {
         Arc o = getArc(instrumentIndex, lightSourceIndex);
         o.setModel(toRType(model));
     }
@@ -2339,7 +2606,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setArcPower(Power power, int instrumentIndex,
-                            int lightSourceIndex) {
+                            int lightSourceIndex)
+    {
         Arc o = getArc(instrumentIndex, lightSourceIndex);
         o.setPower(convertPower(power));
     }
@@ -2349,7 +2617,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setArcSerialNumber(String serialNumber, int instrumentIndex,
-                                   int lightSourceIndex) {
+                                   int lightSourceIndex)
+    {
         Arc o = getArc(instrumentIndex, lightSourceIndex);
         o.setSerialNumber(toRType(serialNumber));
     }
@@ -2359,7 +2628,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setArcType(ome.xml.model.enums.ArcType type,
-                           int instrumentIndex, int lightSourceIndex) {
+                           int instrumentIndex, int lightSourceIndex)
+    {
         Arc o = getArc(instrumentIndex, lightSourceIndex);
         o.setType((ArcType) getEnumeration(ArcType.class, type.toString()));
     }
@@ -2368,7 +2638,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setArcType(ome.xml.model.enums.ArcType, int, int)
      */
     @Override
-    public void setArcAnnotationRef(String annotation, int instrumentIndex, int lightSourceIndex, int annotationRefIndex) {
+    public void setArcAnnotationRef(String annotation, int instrumentIndex, int lightSourceIndex, int annotationRefIndex)
+    {
         LSID key = new LSID(Arc.class, instrumentIndex, lightSourceIndex);
         addReference(key, new LSID(annotation));
     }
@@ -2379,7 +2650,8 @@ public class OMEROMetadataStoreClient
      * @param booleanAnnotationIndex the index of the Boolean annotation
      * @return the Boolean annotation
      */
-    private BooleanAnnotation getBooleanAnnotation(int booleanAnnotationIndex) {
+    private BooleanAnnotation getBooleanAnnotation(int booleanAnnotationIndex)
+    {
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
         indexes.put(Index.BOOLEAN_ANNOTATION_INDEX, booleanAnnotationIndex);
@@ -2390,7 +2662,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setBooleanAnnotationID(java.lang.String, int)
      */
     @Override
-    public void setBooleanAnnotationID(String id, int booleanAnnotationIndex) {
+    public void setBooleanAnnotationID(String id, int booleanAnnotationIndex)
+    {
         checkDuplicateLSID(BooleanAnnotation.class, id);
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
@@ -2405,7 +2678,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setBooleanAnnotationNamespace(String namespace,
-                                              int booleanAnnotationIndex) {
+                                              int booleanAnnotationIndex)
+    {
         BooleanAnnotation o = getBooleanAnnotation(booleanAnnotationIndex);
         o.setNs(toRType(namespace));
     }
@@ -2415,7 +2689,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setBooleanAnnotationValue(Boolean value,
-                                          int booleanAnnotationIndex) {
+                                          int booleanAnnotationIndex)
+    {
         BooleanAnnotation o = getBooleanAnnotation(booleanAnnotationIndex);
         o.setBoolValue(toRType(value));
     }
@@ -2424,7 +2699,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setBinaryOnlyUUID(java.lang.String)
      */
     @Override
-    public void setBinaryOnlyUUID(String uuid) {
+    public void setBinaryOnlyUUID(String uuid)
+    {
         ignoreUnneeded("BinaryOnlyUUID", uuid);
     }
 
@@ -2432,13 +2708,15 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setBinaryOnlyMetadataFile(java.lang.String)
      */
     @Override
-    public void setBinaryOnlyMetadataFile(String metadataFile) {
+    public void setBinaryOnlyMetadataFile(String metadataFile)
+    {
         ignoreUnneeded("BinaryMetadataFile", metadataFile);
     }
 
     //////// Channel /////////
 
-    public Channel getChannel(int imageIndex, int channelIndex) {
+    public Channel getChannel(int imageIndex, int channelIndex)
+    {
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
         indexes.put(Index.IMAGE_INDEX, imageIndex);
@@ -2452,7 +2730,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setChannelID(java.lang.String, int, int)
      */
     @Override
-    public void setChannelID(String id, int imageIndex, int channelIndex) {
+    public void setChannelID(String id, int imageIndex, int channelIndex)
+    {
         checkDuplicateLSID(Channel.class, id);
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
@@ -2469,7 +2748,8 @@ public class OMEROMetadataStoreClient
     @Override
     public void setChannelAcquisitionMode(
             ome.xml.model.enums.AcquisitionMode acquisitionMode,
-            int imageIndex, int channelIndex) {
+            int imageIndex, int channelIndex)
+    {
         Channel o = getChannel(imageIndex, channelIndex);
         o.getLogicalChannel().setMode((AcquisitionMode) getEnumeration(AcquisitionMode.class, acquisitionMode.toString()));
     }
@@ -2478,7 +2758,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setChannelColor(ome.xml.model.primitives.Color, int, int)
      */
     @Override
-    public void setChannelColor(Color color, int imageIndex, int channelIndex) {
+    public void setChannelColor(Color color, int imageIndex, int channelIndex)
+    {
         Channel o = getChannel(imageIndex, channelIndex);
         o.setRed(toRType(color.getRed()));
         o.setGreen(toRType(color.getGreen()));
@@ -2492,7 +2773,8 @@ public class OMEROMetadataStoreClient
     @Override
     public void setChannelContrastMethod(
             ome.xml.model.enums.ContrastMethod contrastMethod,
-            int imageIndex, int channelIndex) {
+            int imageIndex, int channelIndex)
+    {
         Channel o = getChannel(imageIndex, channelIndex);
         o.getLogicalChannel().setContrastMethod((ContrastMethod) getEnumeration(ContrastMethod.class, contrastMethod.toString()));
     }
@@ -2502,7 +2784,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setChannelEmissionWavelength(
-            Length emissionWavelength, int imageIndex, int channelIndex) {
+            Length emissionWavelength, int imageIndex, int channelIndex)
+    {
         Channel o = getChannel(imageIndex, channelIndex);
         o.getLogicalChannel().setEmissionWave(convertLength(emissionWavelength));
     }
@@ -2513,7 +2796,8 @@ public class OMEROMetadataStoreClient
     @Override
     public void setChannelExcitationWavelength(
             Length excitationWavelength, int imageIndex,
-            int channelIndex) {
+            int channelIndex)
+    {
         Channel o = getChannel(imageIndex, channelIndex);
         o.getLogicalChannel().setExcitationWave(convertLength(excitationWavelength));
     }
@@ -2523,7 +2807,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setChannelFilterSetRef(String filterSet, int imageIndex,
-                                       int channelIndex) {
+                                       int channelIndex)
+    {
         LSID key = new LSID(LogicalChannel.class, imageIndex, channelIndex);
         addReference(key, new LSID(filterSet));
 
@@ -2533,7 +2818,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setChannelFluor(java.lang.String, int, int)
      */
     @Override
-    public void setChannelFluor(String fluor, int imageIndex, int channelIndex) {
+    public void setChannelFluor(String fluor, int imageIndex, int channelIndex)
+    {
         Channel o = getChannel(imageIndex, channelIndex);
         o.getLogicalChannel().setFluor(toRType(fluor));
     }
@@ -2543,7 +2829,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setChannelIlluminationType(IlluminationType illuminationType,
-                                           int imageIndex, int channelIndex) {
+                                           int imageIndex, int channelIndex)
+    {
         Channel o = getChannel(imageIndex, channelIndex);
         o.getLogicalChannel().setIllumination((Illumination) getEnumeration(Illumination.class, illuminationType.toString()));
     }
@@ -2554,7 +2841,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setChannelNDFilter(Double ndfilter, int imageIndex,
-                                   int channelIndex) {
+                                   int channelIndex)
+    {
         Channel o = getChannel(imageIndex, channelIndex);
         o.getLogicalChannel().setNdFilter(toRType(ndfilter));
     }
@@ -2564,7 +2852,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setChannelName(java.lang.String, int, int)
      */
     @Override
-    public void setChannelName(String name, int imageIndex, int channelIndex) {
+    public void setChannelName(String name, int imageIndex, int channelIndex)
+    {
         Channel o = getChannel(imageIndex, channelIndex);
         o.getLogicalChannel().setName(toRType(name));
     }
@@ -2575,7 +2864,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setChannelPinholeSize(Length pinholeSize, int imageIndex,
-                                      int channelIndex) {
+                                      int channelIndex)
+    {
         Channel o = getChannel(imageIndex, channelIndex);
         o.getLogicalChannel().setPinHoleSize(convertLength(pinholeSize));
     }
@@ -2585,7 +2875,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setChannelPockelCellSetting(Integer pockelCellSetting,
-                                            int imageIndex, int channelIndex) {
+                                            int imageIndex, int channelIndex)
+    {
         Channel o = getChannel(imageIndex, channelIndex);
         o.getLogicalChannel().setPockelCellSetting(toRType(pockelCellSetting));
     }
@@ -2596,7 +2887,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setChannelSamplesPerPixel(PositiveInteger samplesPerPixel,
-                                          int imageIndex, int channelIndex) {
+                                          int imageIndex, int channelIndex)
+    {
         Channel o = getChannel(imageIndex, channelIndex);
         o.getLogicalChannel().setSamplesPerPixel(toRType(samplesPerPixel));
     }
@@ -2606,7 +2898,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setChannelAnnotationRef(String annotation, int imageIndex,
-                                        int channelIndex, int annotationRefIndex) {
+                                        int channelIndex, int annotationRefIndex)
+    {
         LSID key = new LSID(Channel.class, imageIndex, channelIndex);
         addReference(key, new LSID(annotation));
     }
@@ -2616,11 +2909,12 @@ public class OMEROMetadataStoreClient
     /**
      * Logical Channel and Channel combined in the new model
      *
-     * @param imageIndex   the index of the image
+     * @param imageIndex the index of the image
      * @param channelIndex the index of the channel within the image
      * @return the light settings
      */
-    private LightSettings getChannelLightSourceSettings(int imageIndex, int channelIndex) {
+    private LightSettings getChannelLightSourceSettings(int imageIndex, int channelIndex)
+    {
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
         indexes.put(Index.IMAGE_INDEX, imageIndex);
@@ -2633,7 +2927,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setChannelLightSourceSettingsID(String id, int imageIndex,
-                                                int channelIndex) {
+                                                int channelIndex)
+    {
         getChannelLightSourceSettings(imageIndex, channelIndex);
         LSID key = new LSID(LightSettings.class, imageIndex, channelIndex);
         addReference(key, new LSID(id));
@@ -2644,7 +2939,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setChannelLightSourceSettingsAttenuation(
-            PercentFraction attenuation, int imageIndex, int channelIndex) {
+            PercentFraction attenuation, int imageIndex, int channelIndex)
+    {
         LightSettings o = getChannelLightSourceSettings(imageIndex, channelIndex);
         o.setAttenuation(toRType(attenuation));
     }
@@ -2654,7 +2950,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setChannelLightSourceSettingsWavelength(
-            Length wavelength, int imageIndex, int channelIndex) {
+            Length wavelength, int imageIndex, int channelIndex)
+    {
         LightSettings o = getChannelLightSourceSettings(imageIndex, channelIndex);
         o.setWavelength(convertLength(wavelength));
     }
@@ -2662,7 +2959,8 @@ public class OMEROMetadataStoreClient
     ////////Dataset/////////
 
     @Override
-    public void setDatasetID(String id, int datasetIndex) {
+    public void setDatasetID(String id, int datasetIndex)
+    {
         ignoreUnsupported("setDatasetID", id, datasetIndex);
     }
 
@@ -2671,7 +2969,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setDatasetAnnotationRef(String annotation, int datasetIndex,
-                                        int annotationRefIndex) {
+                                        int annotationRefIndex)
+    {
         ignoreUnsupported("setDatasetAnnotationRef", annotation, datasetIndex,
                 annotationRefIndex);
     }
@@ -2680,7 +2979,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setDatasetDescription(java.lang.String, int)
      */
     @Override
-    public void setDatasetDescription(String description, int datasetIndex) {
+    public void setDatasetDescription(String description, int datasetIndex)
+    {
         ignoreUnsupported("setDatasetDescription", description, datasetIndex);
     }
 
@@ -2688,7 +2988,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setDatasetExperimenterRef(java.lang.String, int)
      */
     @Override
-    public void setDatasetExperimenterRef(String experimenter, int datasetIndex) {
+    public void setDatasetExperimenterRef(String experimenter, int datasetIndex)
+    {
         ignoreUnsupported("setDatasetExperimenterRef", experimenter,
                 datasetIndex);
     }
@@ -2697,7 +2998,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setDatasetExperimenterGroupRef(java.lang.String, int)
      */
     @Override
-    public void setDatasetExperimenterGroupRef(String group, int datasetIndex) {
+    public void setDatasetExperimenterGroupRef(String group, int datasetIndex)
+    {
         ignoreUnsupported("setDatasetExperimenterGroupRef",
                 group, datasetIndex);
     }
@@ -2706,7 +3008,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setDatasetName(java.lang.String, int)
      */
     @Override
-    public void setDatasetName(String name, int datasetIndex) {
+    public void setDatasetName(String name, int datasetIndex)
+    {
         ignoreUnsupported("setDatasetName", name, datasetIndex);
     }
 
@@ -2714,10 +3017,11 @@ public class OMEROMetadataStoreClient
 
     /**
      * @param instrumentIndex the instrument index
-     * @param detectorIndex   the detector index within the instrument
+     * @param detectorIndex the detector index within the instrument
      * @return the detector
      */
-    public Detector getDetector(int instrumentIndex, int detectorIndex) {
+    public Detector getDetector(int instrumentIndex, int detectorIndex)
+    {
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
         indexes.put(Index.INSTRUMENT_INDEX, instrumentIndex);
@@ -2729,7 +3033,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setDetectorID(java.lang.String, int, int)
      */
     @Override
-    public void setDetectorID(String id, int instrumentIndex, int detectorIndex) {
+    public void setDetectorID(String id, int instrumentIndex, int detectorIndex)
+    {
         checkDuplicateLSID(Detector.class, id);
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
@@ -2745,7 +3050,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setDetectorAmplificationGain(Double amplificationGain,
-                                             int instrumentIndex, int detectorIndex) {
+                                             int instrumentIndex, int detectorIndex)
+    {
         Detector o = getDetector(instrumentIndex, detectorIndex);
         o.setAmplificationGain(toRType(amplificationGain));
     }
@@ -2755,7 +3061,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setDetectorGain(Double gain, int instrumentIndex,
-                                int detectorIndex) {
+                                int detectorIndex)
+    {
         Detector o = getDetector(instrumentIndex, detectorIndex);
         o.setGain(toRType(gain));
     }
@@ -2765,7 +3072,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setDetectorLotNumber(String lotNumber, int instrumentIndex,
-                                     int detectorIndex) {
+                                     int detectorIndex)
+    {
         Detector o = getDetector(instrumentIndex, detectorIndex);
         o.setLotNumber(toRType(lotNumber));
     }
@@ -2775,7 +3083,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setDetectorManufacturer(String manufacturer,
-                                        int instrumentIndex, int detectorIndex) {
+                                        int instrumentIndex, int detectorIndex)
+    {
         Detector o = getDetector(instrumentIndex, detectorIndex);
         o.setManufacturer(toRType(manufacturer));
     }
@@ -2785,7 +3094,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setDetectorModel(String model, int instrumentIndex,
-                                 int detectorIndex) {
+                                 int detectorIndex)
+    {
         Detector o = getDetector(instrumentIndex, detectorIndex);
         o.setModel(toRType(model));
     }
@@ -2795,7 +3105,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setDetectorOffset(Double offset, int instrumentIndex,
-                                  int detectorIndex) {
+                                  int detectorIndex)
+    {
         Detector o = getDetector(instrumentIndex, detectorIndex);
         o.setOffsetValue(toRType(offset));
     }
@@ -2805,7 +3116,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setDetectorSerialNumber(String serialNumber,
-                                        int instrumentIndex, int detectorIndex) {
+                                        int instrumentIndex, int detectorIndex)
+    {
         Detector o = getDetector(instrumentIndex, detectorIndex);
         o.setSerialNumber(toRType(serialNumber));
     }
@@ -2816,7 +3128,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setDetectorType(ome.xml.model.enums.DetectorType type,
-                                int instrumentIndex, int detectorIndex) {
+                                int instrumentIndex, int detectorIndex)
+    {
         Detector o = getDetector(instrumentIndex, detectorIndex);
         o.setType((DetectorType) getEnumeration(DetectorType.class, type.toString()));
     }
@@ -2826,7 +3139,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setDetectorVoltage(ElectricPotential voltage, int instrumentIndex,
-                                   int detectorIndex) {
+                                   int detectorIndex)
+    {
         Detector o = getDetector(instrumentIndex, detectorIndex);
         o.setVoltage(convertElectricPotential(voltage));
     }
@@ -2836,7 +3150,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setDetectorZoom(Double zoom, int instrumentIndex,
-                                int detectorIndex) {
+                                int detectorIndex)
+    {
         Detector o = getDetector(instrumentIndex, detectorIndex);
         o.setZoom(toRType(zoom));
     }
@@ -2844,11 +3159,12 @@ public class OMEROMetadataStoreClient
     ////////Detector Settings/////////
 
     /**
-     * @param imageIndex   the index of the image
+     * @param imageIndex the index of the image
      * @param channelIndex the index of the channel within the image
      * @return the detector settings
      */
-    private DetectorSettings getDetectorSettings(int imageIndex, int channelIndex) {
+    private DetectorSettings getDetectorSettings(int imageIndex, int channelIndex)
+    {
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
         indexes.put(Index.IMAGE_INDEX, imageIndex);
@@ -2861,7 +3177,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setDetectorSettingsID(String id, int imageIndex,
-                                      int channelIndex) {
+                                      int channelIndex)
+    {
         getDetectorSettings(imageIndex, channelIndex);
         LSID key = new LSID(DetectorSettings.class, imageIndex, channelIndex);
         addReference(key, new LSID(id));
@@ -2873,7 +3190,8 @@ public class OMEROMetadataStoreClient
     @Override
     public void setDetectorSettingsBinning(
             ome.xml.model.enums.Binning binning, int imageIndex,
-            int channelIndex) {
+            int channelIndex)
+    {
         DetectorSettings o = getDetectorSettings(imageIndex, channelIndex);
         o.setBinning((Binning) getEnumeration(Binning.class, binning.toString()));
     }
@@ -2883,7 +3201,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setDetectorSettingsGain(Double gain, int imageIndex,
-                                        int channelIndex) {
+                                        int channelIndex)
+    {
         DetectorSettings o = getDetectorSettings(imageIndex, channelIndex);
         o.setGain(toRType(gain));
     }
@@ -2892,7 +3211,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setDetectorSettingsIntegration(ome.xml.model.primitives.PositiveInteger,int,int)
      */
     @Override
-    public void setDetectorSettingsIntegration(PositiveInteger integration, int imageIndex, int channelIndex) {
+    public void  setDetectorSettingsIntegration(PositiveInteger integration, int imageIndex, int channelIndex)
+    {
         DetectorSettings o = getDetectorSettings(imageIndex, channelIndex);
         o.setIntegration(toRType(integration));
     }
@@ -2902,7 +3222,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setDetectorSettingsOffset(Double offset, int imageIndex,
-                                          int channelIndex) {
+                                          int channelIndex)
+    {
         DetectorSettings o = getDetectorSettings(imageIndex, channelIndex);
         o.setOffsetValue(toRType(offset));
     }
@@ -2912,7 +3233,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setDetectorSettingsReadOutRate(Frequency readOutRate,
-                                               int imageIndex, int channelIndex) {
+                                               int imageIndex, int channelIndex)
+    {
         DetectorSettings o = getDetectorSettings(imageIndex, channelIndex);
         o.setReadOutRate(convertFrequency(readOutRate));
     }
@@ -2922,7 +3244,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setDetectorSettingsVoltage(ElectricPotential voltage, int imageIndex,
-                                           int channelIndex) {
+                                           int channelIndex)
+    {
         DetectorSettings o = getDetectorSettings(imageIndex, channelIndex);
         o.setVoltage(convertElectricPotential(voltage));
     }
@@ -2931,7 +3254,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setDetectorSettingsZoom(java.lang.Double,int,int)
      */
     @Override
-    public void setDetectorSettingsZoom(Double zoom, int imageIndex, int channelIndex) {
+    public void  setDetectorSettingsZoom(Double zoom, int imageIndex, int channelIndex)
+    {
         DetectorSettings o = getDetectorSettings(imageIndex, channelIndex);
         o.setZoom(toRType(zoom));
     }
@@ -2940,10 +3264,11 @@ public class OMEROMetadataStoreClient
 
     /**
      * @param instrumentIndex the index of the instrument
-     * @param dichroicIndex   the index of the dichroic within the instrument
+     * @param dichroicIndex the index of the dichroic within the instrument
      * @return the dichroic
      */
-    private Dichroic getDichroic(int instrumentIndex, int dichroicIndex) {
+    private Dichroic getDichroic(int instrumentIndex, int dichroicIndex)
+    {
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
         indexes.put(Index.INSTRUMENT_INDEX, instrumentIndex);
@@ -2955,7 +3280,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setDichroicID(java.lang.String, int, int)
      */
     @Override
-    public void setDichroicID(String id, int instrumentIndex, int dichroicIndex) {
+    public void setDichroicID(String id, int instrumentIndex, int dichroicIndex)
+    {
         checkDuplicateLSID(Dichroic.class, id);
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
@@ -2971,7 +3297,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setDichroicLotNumber(String lotNumber, int instrumentIndex,
-                                     int dichroicIndex) {
+                                     int dichroicIndex)
+    {
         Dichroic o = getDichroic(instrumentIndex, dichroicIndex);
         o.setLotNumber(toRType(lotNumber));
     }
@@ -2981,7 +3308,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setDichroicManufacturer(String manufacturer,
-                                        int instrumentIndex, int dichroicIndex) {
+                                        int instrumentIndex, int dichroicIndex)
+    {
         Dichroic o = getDichroic(instrumentIndex, dichroicIndex);
         o.setManufacturer(toRType(manufacturer));
     }
@@ -2991,7 +3319,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setDichroicModel(String model, int instrumentIndex,
-                                 int dichroicIndex) {
+                                 int dichroicIndex)
+    {
         Dichroic o = getDichroic(instrumentIndex, dichroicIndex);
         o.setModel(toRType(model));
     }
@@ -3001,14 +3330,16 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setDichroicSerialNumber(String serialNumber,
-                                        int instrumentIndex, int dichroicIndex) {
+                                        int instrumentIndex, int dichroicIndex)
+    {
         Dichroic o = getDichroic(instrumentIndex, dichroicIndex);
         o.setSerialNumber(toRType(serialNumber));
     }
 
     ////////Double Annotation/////////
 
-    private DoubleAnnotation getDoubleAnnotation(int doubleAnnotationIndex) {
+    private DoubleAnnotation getDoubleAnnotation(int doubleAnnotationIndex)
+    {
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
         indexes.put(Index.DOUBLE_ANNOTATION_INDEX, doubleAnnotationIndex);
@@ -3019,7 +3350,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setDoubleAnnotationID(java.lang.String, int)
      */
     @Override
-    public void setDoubleAnnotationID(String id, int doubleAnnotationIndex) {
+    public void setDoubleAnnotationID(String id, int doubleAnnotationIndex)
+    {
         checkDuplicateLSID(DoubleAnnotation.class, id);
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
@@ -3034,7 +3366,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setDoubleAnnotationNamespace(String namespace,
-                                             int doubleAnnotationIndex) {
+                                             int doubleAnnotationIndex)
+    {
         DoubleAnnotation o = getDoubleAnnotation(doubleAnnotationIndex);
         o.setNs(toRType(namespace));
     }
@@ -3043,7 +3376,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setDoubleAnnotationValue(java.lang.Double, int)
      */
     @Override
-    public void setDoubleAnnotationValue(Double value, int doubleAnnotationIndex) {
+    public void setDoubleAnnotationValue(Double value, int doubleAnnotationIndex)
+    {
         DoubleAnnotation o = getDoubleAnnotation(doubleAnnotationIndex);
         o.setDoubleValue(toRType(value));
     }
@@ -3051,11 +3385,12 @@ public class OMEROMetadataStoreClient
     ////////Eclipse/////////
 
     /**
-     * @param ROIIndex   the index of the ROI
+     * @param ROIIndex the index of the ROI
      * @param shapeIndex the index of the shape within the ROI
      * @return the ellipse
      */
-    private Ellipse getEllipse(int ROIIndex, int shapeIndex) {
+    private Ellipse getEllipse(int ROIIndex, int shapeIndex)
+    {
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
         indexes.put(Index.ROI_INDEX, ROIIndex);
@@ -3067,7 +3402,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setEllipseID(java.lang.String, int, int)
      */
     @Override
-    public void setEllipseID(String id, int ROIIndex, int shapeIndex) {
+    public void setEllipseID(String id, int ROIIndex, int shapeIndex)
+    {
         checkDuplicateLSID(Ellipse.class, id);
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
@@ -3082,7 +3418,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setEllipseFillColor(ome.xml.model.primitives.Color, int, int)
      */
     @Override
-    public void setEllipseFillColor(Color fill, int ROIIndex, int shapeIndex) {
+    public void setEllipseFillColor(Color fill, int ROIIndex, int shapeIndex)
+    {
         Ellipse o = getEllipse(ROIIndex, shapeIndex);
         o.setFillColor(toRType(fill));
     }
@@ -3092,7 +3429,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setEllipseFontSize(Length fontSize, int ROIIndex,
-                                   int shapeIndex) {
+                                   int shapeIndex)
+    {
         Ellipse o = getEllipse(ROIIndex, shapeIndex);
         o.setFontSize(convertLength(fontSize));
     }
@@ -3101,7 +3439,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setEllipseText(java.lang.String, int, int)
      */
     @Override
-    public void setEllipseText(String text, int ROIIndex, int shapeIndex) {
+    public void setEllipseText(String text, int ROIIndex, int shapeIndex)
+    {
         Ellipse o = getEllipse(ROIIndex, shapeIndex);
         o.setTextValue(toRType(text));
     }
@@ -3110,7 +3449,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setEllipseRadiusX(java.lang.Double, int, int)
      */
     @Override
-    public void setEllipseRadiusX(Double radiusX, int ROIIndex, int shapeIndex) {
+    public void setEllipseRadiusX(Double radiusX, int ROIIndex, int shapeIndex)
+    {
         Ellipse o = getEllipse(ROIIndex, shapeIndex);
         o.setRadiusX(toRType(radiusX));
     }
@@ -3119,7 +3459,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setEllipseRadiusY(java.lang.Double, int, int)
      */
     @Override
-    public void setEllipseRadiusY(Double radiusY, int ROIIndex, int shapeIndex) {
+    public void setEllipseRadiusY(Double radiusY, int ROIIndex, int shapeIndex)
+    {
         Ellipse o = getEllipse(ROIIndex, shapeIndex);
         o.setRadiusY(toRType(radiusY));
     }
@@ -3128,7 +3469,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setEllipseStrokeColor(ome.xml.model.primitives.Color, int, int)
      */
     @Override
-    public void setEllipseStrokeColor(Color stroke, int ROIIndex, int shapeIndex) {
+    public void setEllipseStrokeColor(Color stroke, int ROIIndex, int shapeIndex)
+    {
         Ellipse o = getEllipse(ROIIndex, shapeIndex);
         o.setStrokeColor(toRType(stroke));
     }
@@ -3138,7 +3480,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setEllipseStrokeDashArray(String strokeDashArray, int ROIIndex,
-                                          int shapeIndex) {
+                                          int shapeIndex)
+    {
         Ellipse o = getEllipse(ROIIndex, shapeIndex);
         o.setStrokeDashArray(toRType(strokeDashArray));
     }
@@ -3148,7 +3491,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setEllipseStrokeWidth(Length strokeWidth, int ROIIndex,
-                                      int shapeIndex) {
+                                      int shapeIndex)
+    {
         Ellipse o = getEllipse(ROIIndex, shapeIndex);
         o.setStrokeWidth(convertLength(strokeWidth));
     }
@@ -3157,7 +3501,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setEllipseTheC(java.lang.Integer, int, int)
      */
     @Override
-    public void setEllipseTheC(NonNegativeInteger theC, int ROIIndex, int shapeIndex) {
+    public void setEllipseTheC(NonNegativeInteger theC, int ROIIndex, int shapeIndex)
+    {
         Ellipse o = getEllipse(ROIIndex, shapeIndex);
         o.setTheC(toRType(theC));
     }
@@ -3166,7 +3511,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setEllipseTheT(java.lang.Integer, int, int)
      */
     @Override
-    public void setEllipseTheT(NonNegativeInteger theT, int ROIIndex, int shapeIndex) {
+    public void setEllipseTheT(NonNegativeInteger theT, int ROIIndex, int shapeIndex)
+    {
         Ellipse o = getEllipse(ROIIndex, shapeIndex);
         o.setTheT(toRType(theT));
     }
@@ -3175,7 +3521,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setEllipseTheZ(java.lang.Integer, int, int)
      */
     @Override
-    public void setEllipseTheZ(NonNegativeInteger theZ, int ROIIndex, int shapeIndex) {
+    public void setEllipseTheZ(NonNegativeInteger theZ, int ROIIndex, int shapeIndex)
+    {
         Ellipse o = getEllipse(ROIIndex, shapeIndex);
         o.setTheZ(toRType(theZ));
     }
@@ -3185,7 +3532,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setEllipseTransform(AffineTransform transform, int ROIIndex,
-                                    int shapeIndex) {
+                                    int shapeIndex)
+    {
         Ellipse o = getEllipse(ROIIndex, shapeIndex);
         o.setTransform(toRType(transform));
     }
@@ -3194,7 +3542,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setEllipseX(java.lang.Double, int, int)
      */
     @Override
-    public void setEllipseX(Double x, int ROIIndex, int shapeIndex) {
+    public void setEllipseX(Double x, int ROIIndex, int shapeIndex)
+    {
         Ellipse o = getEllipse(ROIIndex, shapeIndex);
         o.setX(toRType(x));
     }
@@ -3203,14 +3552,16 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setEllipseY(java.lang.Double, int, int)
      */
     @Override
-    public void setEllipseY(Double y, int ROIIndex, int shapeIndex) {
+    public void setEllipseY(Double y, int ROIIndex, int shapeIndex)
+    {
         Ellipse o = getEllipse(ROIIndex, shapeIndex);
         o.setY(toRType(y));
     }
 
     ////////Experiment/////////
 
-    private Experiment getExperiment(int experimentIndex) {
+    private Experiment getExperiment(int experimentIndex)
+    {
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
         indexes.put(Index.EXPERIMENT_INDEX, experimentIndex);
@@ -3221,7 +3572,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setExperimentID(java.lang.String, int)
      */
     @Override
-    public void setExperimentID(String id, int experimentIndex) {
+    public void setExperimentID(String id, int experimentIndex)
+    {
         checkDuplicateLSID(Experiment.class, id);
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
@@ -3235,7 +3587,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setExperimentDescription(java.lang.String, int)
      */
     @Override
-    public void setExperimentDescription(String description, int experimentIndex) {
+    public void setExperimentDescription(String description, int experimentIndex)
+    {
         Experiment o = getExperiment(experimentIndex);
         o.setDescription(toRType(description));
     }
@@ -3245,7 +3598,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setExperimentExperimenterRef(String experimenter,
-                                             int experimentIndex) {
+                                             int experimentIndex)
+    {
         ignoreInsecure("setExperimenterExperiemnterRef", experimenter,
                 experimentIndex);
     }
@@ -3255,7 +3609,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setExperimentType(ome.xml.model.enums.ExperimentType type,
-                                  int experimentIndex) {
+                                  int experimentIndex)
+    {
         Experiment o = getExperiment(experimentIndex);
         o.setType((ExperimentType) getEnumeration(ExperimentType.class, type.toString()));
     }
@@ -3266,7 +3621,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setExperimenterID(java.lang.String, int)
      */
     @Override
-    public void setExperimenterID(String id, int experimenterIndex) {
+    public void setExperimenterID(String id, int experimenterIndex)
+    {
         ignoreUnsupported("setExperimenterID", id, experimenterIndex);
     }
 
@@ -3275,7 +3631,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setExperimenterAnnotationRef(String annotation,
-                                             int experimenterIndex, int annotationRefIndex) {
+                                             int experimenterIndex, int annotationRefIndex)
+    {
         ignoreUnsupported("setExperimenterAnnotationRef",
                 annotation, experimenterIndex, annotationRefIndex);
     }
@@ -3284,7 +3641,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setExperimenterEmail(java.lang.String, int)
      */
     @Override
-    public void setExperimenterEmail(String email, int experimenterIndex) {
+    public void setExperimenterEmail(String email, int experimenterIndex)
+    {
         ignoreUnsupported("setExperimenterEmail", email, experimenterIndex);
     }
 
@@ -3292,7 +3650,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setExperimenterFirstName(java.lang.String, int)
      */
     @Override
-    public void setExperimenterFirstName(String firstName, int experimenterIndex) {
+    public void setExperimenterFirstName(String firstName, int experimenterIndex)
+    {
         ignoreUnsupported("setExperimenterFirstName",
                 firstName, experimenterIndex);
     }
@@ -3302,7 +3661,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setExperimenterInstitution(String institution,
-                                           int experimenterIndex) {
+                                           int experimenterIndex)
+    {
         ignoreUnsupported("setExperimenterInstitution",
                 institution, experimenterIndex);
     }
@@ -3311,7 +3671,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setExperimenterLastName(java.lang.String, int)
      */
     @Override
-    public void setExperimenterLastName(String lastName, int experimenterIndex) {
+    public void setExperimenterLastName(String lastName, int experimenterIndex)
+    {
         ignoreUnsupported("setExperimenterLastName",
                 lastName, experimenterIndex);
     }
@@ -3321,7 +3682,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setExperimenterMiddleName(String middleName,
-                                          int experimenterIndex) {
+                                          int experimenterIndex)
+    {
         ignoreUnsupported("setExperimenterMiddleName",
                 middleName, experimenterIndex);
     }
@@ -3330,14 +3692,16 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setExperimenterUserName(java.lang.String, int)
      */
     @Override
-    public void setExperimenterUserName(String userName, int experimenterIndex) {
+    public void setExperimenterUserName(String userName, int experimenterIndex)
+    {
         ignoreUnsupported("setExperimenterUserName",
                 userName, experimenterIndex);
     }
 
     ////////Filament/////////
 
-    public Filament getFilament(int instrumentIndex, int lightSourceIndex) {
+    public Filament getFilament(int instrumentIndex, int lightSourceIndex)
+    {
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
         indexes.put(Index.INSTRUMENT_INDEX, instrumentIndex);
@@ -3350,7 +3714,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setFilamentID(String id, int instrumentIndex,
-                              int lightSourceIndex) {
+                              int lightSourceIndex)
+    {
         checkDuplicateLSID(Filament.class, id);
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
@@ -3366,7 +3731,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setFilamentLotNumber(String lotNumber, int instrumentIndex,
-                                     int lightSourceIndex) {
+                                     int lightSourceIndex)
+    {
         Filament o = getFilament(instrumentIndex, lightSourceIndex);
         o.setLotNumber(toRType(lotNumber));
     }
@@ -3376,7 +3742,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setFilamentManufacturer(String manufacturer,
-                                        int instrumentIndex, int lightSourceIndex) {
+                                        int instrumentIndex, int lightSourceIndex)
+    {
         Filament o = getFilament(instrumentIndex, lightSourceIndex);
         o.setManufacturer(toRType(manufacturer));
     }
@@ -3386,7 +3753,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setFilamentModel(String model, int instrumentIndex,
-                                 int lightSourceIndex) {
+                                 int lightSourceIndex)
+    {
         Filament o = getFilament(instrumentIndex, lightSourceIndex);
         o.setModel(toRType(model));
     }
@@ -3396,7 +3764,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setFilamentPower(Power power, int instrumentIndex,
-                                 int lightSourceIndex) {
+                                 int lightSourceIndex)
+    {
         Filament o = getFilament(instrumentIndex, lightSourceIndex);
         o.setPower(convertPower(power));
     }
@@ -3406,7 +3775,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setFilamentSerialNumber(String serialNumber,
-                                        int instrumentIndex, int lightSourceIndex) {
+                                        int instrumentIndex, int lightSourceIndex)
+    {
         Filament o = getFilament(instrumentIndex, lightSourceIndex);
         o.setSerialNumber(toRType(serialNumber));
     }
@@ -3416,14 +3786,16 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setFilamentType(ome.xml.model.enums.FilamentType type,
-                                int instrumentIndex, int lightSourceIndex) {
+                                int instrumentIndex, int lightSourceIndex)
+    {
         Filament o = getFilament(instrumentIndex, lightSourceIndex);
         o.setType((FilamentType) getEnumeration(FilamentType.class, type.toString()));
     }
 
     ////////FileAnnotation/////////
 
-    private FileAnnotation getFileAnnotation(int fileAnnotationIndex) {
+    private FileAnnotation getFileAnnotation(int fileAnnotationIndex)
+    {
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
         indexes.put(Index.FILE_ANNOTATION_INDEX, fileAnnotationIndex);
@@ -3434,7 +3806,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setFileAnnotationID(java.lang.String, int)
      */
     @Override
-    public void setFileAnnotationID(String id, int fileAnnotationIndex) {
+    public void setFileAnnotationID(String id, int fileAnnotationIndex)
+    {
         checkDuplicateLSID(FileAnnotation.class, id);
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
@@ -3449,14 +3822,16 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setFileAnnotationNamespace(String namespace,
-                                           int fileAnnotationIndex) {
+                                           int fileAnnotationIndex)
+    {
         FileAnnotation o = getFileAnnotation(fileAnnotationIndex);
         o.setNs(toRType(namespace));
     }
 
     ////////Filter/////////
 
-    private Filter getFilter(int instrumentIndex, int filterIndex) {
+    private Filter getFilter(int instrumentIndex, int filterIndex)
+    {
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
         indexes.put(Index.INSTRUMENT_INDEX, instrumentIndex);
@@ -3468,7 +3843,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setFilterID(java.lang.String, int, int)
      */
     @Override
-    public void setFilterID(String id, int instrumentIndex, int filterIndex) {
+    public void setFilterID(String id, int instrumentIndex, int filterIndex)
+    {
         checkDuplicateLSID(Filter.class, id);
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
@@ -3484,7 +3860,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setFilterFilterWheel(String filterWheel, int instrumentIndex,
-                                     int filterIndex) {
+                                     int filterIndex)
+    {
         Filter o = getFilter(instrumentIndex, filterIndex);
         o.setFilterWheel(toRType(filterWheel));
     }
@@ -3494,7 +3871,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setFilterLotNumber(String lotNumber, int instrumentIndex,
-                                   int filterIndex) {
+                                   int filterIndex)
+    {
         Filter o = getFilter(instrumentIndex, filterIndex);
         o.setLotNumber(toRType(lotNumber));
     }
@@ -3504,7 +3882,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setFilterManufacturer(String manufacturer, int instrumentIndex,
-                                      int filterIndex) {
+                                      int filterIndex)
+    {
         Filter o = getFilter(instrumentIndex, filterIndex);
         o.setManufacturer(toRType(manufacturer));
     }
@@ -3514,7 +3893,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setFilterModel(String model, int instrumentIndex,
-                               int filterIndex) {
+                               int filterIndex)
+    {
         Filter o = getFilter(instrumentIndex, filterIndex);
         o.setModel(toRType(model));
     }
@@ -3524,7 +3904,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setFilterSerialNumber(String serialNumber, int instrumentIndex,
-                                      int filterIndex) {
+                                      int filterIndex)
+    {
         Filter o = getFilter(instrumentIndex, filterIndex);
         o.setSerialNumber(toRType(serialNumber));
     }
@@ -3534,14 +3915,16 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setFilterType(ome.xml.model.enums.FilterType type,
-                              int instrumentIndex, int filterIndex) {
+                              int instrumentIndex, int filterIndex)
+    {
         Filter o = getFilter(instrumentIndex, filterIndex);
         o.setType((FilterType) getEnumeration(FilterType.class, type.toString()));
     }
 
     ////////Filter Set/////////
 
-    public FilterSet getFilterSet(int instrumentIndex, int filterSetIndex) {
+    public FilterSet getFilterSet(int instrumentIndex, int filterSetIndex)
+    {
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
         indexes.put(Index.INSTRUMENT_INDEX, instrumentIndex);
@@ -3554,7 +3937,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setFilterSetID(String id, int instrumentIndex,
-                               int filterSetIndex) {
+                               int filterSetIndex)
+    {
         checkDuplicateLSID(FilterSet.class, id);
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
@@ -3570,7 +3954,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setFilterSetDichroicRef(String dichroic, int instrumentIndex,
-                                        int filterSetIndex) {
+                                        int filterSetIndex)
+    {
         LSID key = new LSID(FilterSet.class, instrumentIndex, filterSetIndex);
         addReference(key, new LSID(dichroic));
     }
@@ -3580,7 +3965,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setFilterSetEmissionFilterRef(String emissionFilter,
-                                              int instrumentIndex, int filterSetIndex, int emissionFilterRefIndex) {
+                                              int instrumentIndex, int filterSetIndex, int emissionFilterRefIndex)
+    {
         // Using this suffix is kind of a gross hack but the reference
         // processing logic does not easily handle multiple A --> B or B --> A
         // linkages of the same type so we'll compromise.
@@ -3597,7 +3983,8 @@ public class OMEROMetadataStoreClient
     @Override
     public void setFilterSetExcitationFilterRef(String excitationFilter,
                                                 int instrumentIndex, int filterSetIndex,
-                                                int excitationFilterRefIndex) {
+                                                int excitationFilterRefIndex)
+    {
         // Using this suffix is kind of a gross hack but the reference
         // processing logic does not easily handle multiple A --> B or B --> A
         // linkages of the same type so we'll compromise.
@@ -3613,7 +4000,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setFilterSetLotNumber(String lotNumber, int instrumentIndex,
-                                      int filterSetIndex) {
+                                      int filterSetIndex)
+    {
         FilterSet o = getFilterSet(instrumentIndex, filterSetIndex);
         o.setLotNumber(toRType(lotNumber));
     }
@@ -3623,7 +4011,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setFilterSetManufacturer(String manufacturer,
-                                         int instrumentIndex, int filterSetIndex) {
+                                         int instrumentIndex, int filterSetIndex)
+    {
         FilterSet o = getFilterSet(instrumentIndex, filterSetIndex);
         o.setManufacturer(toRType(manufacturer));
     }
@@ -3633,7 +4022,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setFilterSetModel(String model, int instrumentIndex,
-                                  int filterSetIndex) {
+                                  int filterSetIndex)
+    {
         FilterSet o = getFilterSet(instrumentIndex, filterSetIndex);
         o.setModel(toRType(model));
     }
@@ -3643,7 +4033,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setFilterSetSerialNumber(String serialNumber,
-                                         int instrumentIndex, int filterSetIndex) {
+                                         int instrumentIndex, int filterSetIndex)
+    {
         FilterSet o = getFilterSet(instrumentIndex, filterSetIndex);
         o.setSerialNumber(toRType(serialNumber));
     }
@@ -3823,7 +4214,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setExperimenterGroupID(java.lang.String, int)
      */
     @Override
-    public void setExperimenterGroupID(String id, int groupIndex) {
+    public void setExperimenterGroupID(String id, int groupIndex)
+    {
         ignoreInsecure("setExperimenterGroupID", id, groupIndex);
     }
 
@@ -3831,7 +4223,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setExperimenterGroupDescription(java.lang.String, int)
      */
     @Override
-    public void setExperimenterGroupDescription(String description, int groupIndex) {
+    public void setExperimenterGroupDescription(String description, int groupIndex)
+    {
         ignoreInsecure("setExperimenterGroupDescription", description, groupIndex);
     }
 
@@ -3840,7 +4233,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setExperimenterGroupLeader(String leader, int groupIndex,
-                                           int leaderIndex) {
+                                           int leaderIndex)
+    {
         ignoreInsecure("setExperimenterGroupLeader", leader, groupIndex, leaderIndex);
     }
 
@@ -3848,19 +4242,20 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setExperimenterGroupName(java.lang.String, int)
      */
     @Override
-    public void setExperimenterGroupName(String name, int groupIndex) {
-        ignoreInsecure("setExperimenterGroupName", name, groupIndex);
+    public void setExperimenterGroupName(String name, int groupIndex)
+    {
+        ignoreInsecure("setExperimenterGroupName",name, groupIndex);
     }
 
     //////// Image /////////
 
     /**
      * Retrieve Image
-     *
      * @param imageIndex the index of the image
      * @return the image
      */
-    private Image getImage(int imageIndex) {
+    private Image getImage(int imageIndex)
+    {
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
         indexes.put(Index.IMAGE_INDEX, imageIndex);
@@ -3873,7 +4268,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setImageID(java.lang.String, int)
      */
     @Override
-    public void setImageID(String id, int imageIndex) {
+    public void setImageID(String id, int imageIndex)
+    {
         checkDuplicateLSID(Image.class, id);
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
@@ -3887,8 +4283,10 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setImageAcquisitionDate(ome.xml.model.primitives.Timestamp, int)
      */
     @Override
-    public void setImageAcquisitionDate(Timestamp acquiredDate, int imageIndex) {
-        if (acquiredDate == null) {
+    public void setImageAcquisitionDate(Timestamp acquiredDate, int imageIndex)
+    {
+        if (acquiredDate == null)
+        {
             return;
         }
         Image o = getImage(imageIndex);
@@ -3900,7 +4298,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setImageAnnotationRef(String annotation, int imageIndex,
-                                      int annotationRefIndex) {
+                                      int annotationRefIndex)
+    {
         LSID key = new LSID(Image.class, imageIndex);
         addReference(key, new LSID(annotation));
     }
@@ -3909,7 +4308,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setImageDescription(java.lang.String, int)
      */
     @Override
-    public void setImageDescription(String description, int imageIndex) {
+    public void setImageDescription(String description, int imageIndex)
+    {
         Image o = getImage(imageIndex);
         o.setDescription(toRType(description));
     }
@@ -3918,7 +4318,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#/erimentRef(java.lang.String, int)
      */
     @Override
-    public void setImageExperimentRef(String experiment, int imageIndex) {
+    public void setImageExperimentRef(String experiment, int imageIndex)
+    {
         LSID key = new LSID(Image.class, imageIndex);
         addReference(key, new LSID(experiment));
     }
@@ -3927,7 +4328,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setImageExperimenterRef(java.lang.String, int)
      */
     @Override
-    public void setImageExperimenterRef(String experimenter, int imageIndex) {
+    public void setImageExperimenterRef(String experimenter, int imageIndex)
+    {
         ignoreInsecure("setImageExperimenterRef", experimenter, imageIndex);
     }
 
@@ -3935,7 +4337,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setImageGroupRef(java.lang.String, int)
      */
     @Override
-    public void setImageExperimenterGroupRef(String group, int imageIndex) {
+    public void setImageExperimenterGroupRef(String group, int imageIndex)
+    {
         ignoreInsecure("setImageExperimenterGroupRef", group, imageIndex);
     }
 
@@ -3943,7 +4346,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setImageInstrumentRef(java.lang.String, int)
      */
     @Override
-    public void setImageInstrumentRef(String instrument, int imageIndex) {
+    public void setImageInstrumentRef(String instrument, int imageIndex)
+    {
         LSID key = new LSID(Image.class, imageIndex);
         addReference(key, new LSID(instrument));
     }
@@ -3953,7 +4357,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setImageMicrobeamManipulationRef(String microbeamManipulation,
-                                                 int imageIndex, int microbeamManipulationRefIndex) {
+                                                 int imageIndex, int microbeamManipulationRefIndex)
+    {
         LSID key = new LSID(Image.class, imageIndex);
         addReference(key, new LSID(microbeamManipulation));
     }
@@ -3962,7 +4367,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setImageName(java.lang.String, int)
      */
     @Override
-    public void setImageName(String name, int imageIndex) {
+    public void setImageName(String name, int imageIndex)
+    {
         Image o = getImage(imageIndex);
         o.setName(toRType(name));
     }
@@ -3971,14 +4377,16 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setImageROIRef(java.lang.String, int, int)
      */
     @Override
-    public void setImageROIRef(String roi, int imageIndex, int ROIRefIndex) {
+    public void setImageROIRef(String roi, int imageIndex, int ROIRefIndex)
+    {
         LSID key = new LSID(Image.class, imageIndex);
         addReference(key, new LSID(roi));
     }
 
     //////// Objective Settings /////////
 
-    public ObjectiveSettings getObjectiveSettings(int imageIndex) {
+    public ObjectiveSettings getObjectiveSettings(int imageIndex)
+    {
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
         indexes.put(Index.IMAGE_INDEX, imageIndex);
@@ -3989,7 +4397,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setObjectiveSettingsID(java.lang.String, int)
      */
     @Override
-    public void setObjectiveSettingsID(String id, int imageIndex) {
+    public void setObjectiveSettingsID(String id, int imageIndex)
+    {
         getObjectiveSettings(imageIndex);
         LSID key = new LSID(ObjectiveSettings.class, imageIndex);
         addReference(key, new LSID(id));
@@ -4000,7 +4409,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setObjectiveSettingsCorrectionCollar(
-            Double correctionCollar, int imageIndex) {
+            Double correctionCollar, int imageIndex)
+    {
         ObjectiveSettings o = getObjectiveSettings(imageIndex);
         o.setCorrectionCollar(toRType(correctionCollar));
     }
@@ -4010,7 +4420,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setObjectiveSettingsMedium(
-            ome.xml.model.enums.Medium medium, int imageIndex) {
+            ome.xml.model.enums.Medium medium, int imageIndex)
+    {
         ObjectiveSettings o = getObjectiveSettings(imageIndex);
         o.setMedium((Medium) getEnumeration(Medium.class, medium.toString()));
     }
@@ -4020,14 +4431,16 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setObjectiveSettingsRefractiveIndex(
-            Double refractiveIndex, int imageIndex) {
+            Double refractiveIndex, int imageIndex)
+    {
         ObjectiveSettings o = getObjectiveSettings(imageIndex);
         o.setRefractiveIndex(toRType(refractiveIndex));
     }
 
     //////// Imaging Environment /////////
 
-    public ImagingEnvironment getImagingEnvironment(int imageIndex) {
+    public ImagingEnvironment getImagingEnvironment(int imageIndex)
+    {
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
         indexes.put(Index.IMAGE_INDEX, imageIndex);
@@ -4039,7 +4452,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setImagingEnvironmentAirPressure(Pressure airPressure,
-                                                 int imageIndex) {
+                                                 int imageIndex)
+    {
         ImagingEnvironment o = getImagingEnvironment(imageIndex);
         o.setAirPressure(convertPressure(airPressure));
     }
@@ -4049,7 +4463,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setImagingEnvironmentCO2Percent(PercentFraction co2percent,
-                                                int imageIndex) {
+                                                int imageIndex)
+    {
         ImagingEnvironment o = getImagingEnvironment(imageIndex);
         o.setCo2percent(toRType(co2percent));
     }
@@ -4059,7 +4474,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setImagingEnvironmentHumidity(PercentFraction humidity,
-                                              int imageIndex) {
+                                              int imageIndex)
+    {
         ImagingEnvironment o = getImagingEnvironment(imageIndex);
         o.setHumidity(toRType(humidity));
     }
@@ -4075,7 +4491,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setImagingEnvironmentTemperature(Temperature temperature,
-                                                 int imageIndex) {
+                                                 int imageIndex)
+    {
         ImagingEnvironment o = getImagingEnvironment(imageIndex);
         o.setTemperature(convertTemperature(temperature));
     }
@@ -4086,7 +4503,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setInstrumentID(java.lang.String, int)
      */
     @Override
-    public void setInstrumentID(String id, int instrumentIndex) {
+    public void setInstrumentID(String id, int instrumentIndex)
+    {
         checkDuplicateLSID(Instrument.class, id);
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
@@ -4098,7 +4516,8 @@ public class OMEROMetadataStoreClient
 
     //////// Laser /////////
 
-    public Laser getLaser(int instrumentIndex, int lightSourceIndex) {
+    public Laser getLaser(int instrumentIndex, int lightSourceIndex)
+    {
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
         indexes.put(Index.INSTRUMENT_INDEX, instrumentIndex);
@@ -4110,7 +4529,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setLaserID(java.lang.String, int, int)
      */
     @Override
-    public void setLaserID(String id, int instrumentIndex, int lightSourceIndex) {
+    public void setLaserID(String id, int instrumentIndex, int lightSourceIndex)
+    {
         checkDuplicateLSID(Laser.class, id);
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
@@ -4127,7 +4547,8 @@ public class OMEROMetadataStoreClient
     @Override
     public void setLaserFrequencyMultiplication(
             PositiveInteger frequencyMultiplication, int instrumentIndex,
-            int lightSourceIndex) {
+            int lightSourceIndex)
+    {
         Laser o = getLaser(instrumentIndex, lightSourceIndex);
         o.setFrequencyMultiplication(toRType(frequencyMultiplication));
     }
@@ -4138,7 +4559,8 @@ public class OMEROMetadataStoreClient
     @Override
     public void setLaserLaserMedium(
             ome.xml.model.enums.LaserMedium laserMedium, int instrumentIndex,
-            int lightSourceIndex) {
+            int lightSourceIndex)
+    {
         Laser o = getLaser(instrumentIndex, lightSourceIndex);
         o.setLaserMedium((LaserMedium) getEnumeration(LaserMedium.class, laserMedium.toString()));
     }
@@ -4148,7 +4570,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setLaserLotNumber(String lotNumber, int instrumentIndex,
-                                  int lightSourceIndex) {
+                                  int lightSourceIndex)
+    {
         Laser o = getLaser(instrumentIndex, lightSourceIndex);
         o.setLotNumber(toRType(lotNumber));
     }
@@ -4158,7 +4581,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setLaserManufacturer(String manufacturer, int instrumentIndex,
-                                     int lightSourceIndex) {
+                                     int lightSourceIndex)
+    {
         Laser o = getLaser(instrumentIndex, lightSourceIndex);
         o.setManufacturer(toRType(manufacturer));
     }
@@ -4168,7 +4592,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setLaserModel(String model, int instrumentIndex,
-                              int lightSourceIndex) {
+                              int lightSourceIndex)
+    {
         Laser o = getLaser(instrumentIndex, lightSourceIndex);
         o.setModel(toRType(model));
     }
@@ -4178,7 +4603,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setLaserPockelCell(Boolean pockelCell, int instrumentIndex,
-                                   int lightSourceIndex) {
+                                   int lightSourceIndex)
+    {
         Laser o = getLaser(instrumentIndex, lightSourceIndex);
         o.setPockelCell(toRType(pockelCell));
     }
@@ -4188,7 +4614,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setLaserPower(Power power, int instrumentIndex,
-                              int lightSourceIndex) {
+                              int lightSourceIndex)
+    {
         Laser o = getLaser(instrumentIndex, lightSourceIndex);
         o.setPower(convertPower(power));
     }
@@ -4198,7 +4625,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setLaserPulse(ome.xml.model.enums.Pulse pulse,
-                              int instrumentIndex, int lightSourceIndex) {
+                              int instrumentIndex, int lightSourceIndex)
+    {
         Laser o = getLaser(instrumentIndex, lightSourceIndex);
         o.setPulse((Pulse) getEnumeration(Pulse.class, pulse.toString()));
     }
@@ -4208,7 +4636,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setLaserPump(String pump, int instrumentIndex,
-                             int lightSourceIndex) {
+                             int lightSourceIndex)
+    {
         LSID key = new LSID(Laser.class, instrumentIndex, lightSourceIndex);
         addReference(key, new LSID(pump));
     }
@@ -4218,7 +4647,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setLaserRepetitionRate(Frequency repetitionRate,
-                                       int instrumentIndex, int lightSourceIndex) {
+                                       int instrumentIndex, int lightSourceIndex)
+    {
         Laser o = getLaser(instrumentIndex, lightSourceIndex);
         o.setRepetitionRate(convertFrequency(repetitionRate));
     }
@@ -4228,7 +4658,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setLaserSerialNumber(String serialNumber, int instrumentIndex,
-                                     int lightSourceIndex) {
+                                     int lightSourceIndex)
+    {
         Laser o = getLaser(instrumentIndex, lightSourceIndex);
         o.setSerialNumber(toRType(serialNumber));
     }
@@ -4238,7 +4669,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setLaserTuneable(Boolean tuneable, int instrumentIndex,
-                                 int lightSourceIndex) {
+                                 int lightSourceIndex)
+    {
         Laser o = getLaser(instrumentIndex, lightSourceIndex);
         o.setTuneable(toRType(tuneable));
     }
@@ -4248,7 +4680,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setLaserType(ome.xml.model.enums.LaserType type,
-                             int instrumentIndex, int lightSourceIndex) {
+                             int instrumentIndex, int lightSourceIndex)
+    {
         Laser o = getLaser(instrumentIndex, lightSourceIndex);
         o.setType((LaserType) getEnumeration(LaserType.class, type.toString()));
     }
@@ -4258,14 +4691,16 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setLaserWavelength(Length wavelength,
-                                   int instrumentIndex, int lightSourceIndex) {
+                                   int instrumentIndex, int lightSourceIndex)
+    {
         Laser o = getLaser(instrumentIndex, lightSourceIndex);
         o.setWavelength(convertLength(wavelength));
     }
 
     //////// Laser Emitting Diode /////////
 
-    public LightEmittingDiode getLightEmittingDiode(int instrumentIndex, int lightSourceIndex) {
+    public LightEmittingDiode getLightEmittingDiode(int instrumentIndex, int lightSourceIndex)
+    {
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
         indexes.put(Index.INSTRUMENT_INDEX, instrumentIndex);
@@ -4278,7 +4713,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setLightEmittingDiodeID(String id, int instrumentIndex,
-                                        int lightSourceIndex) {
+                                        int lightSourceIndex)
+    {
         checkDuplicateLSID(LightEmittingDiode.class, id);
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
@@ -4294,7 +4730,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setLightEmittingDiodeLotNumber(String lotNumber,
-                                               int instrumentIndex, int lightSourceIndex) {
+                                               int instrumentIndex, int lightSourceIndex)
+    {
         LightEmittingDiode o = getLightEmittingDiode(instrumentIndex,
                 lightSourceIndex);
         o.setLotNumber(toRType(lotNumber));
@@ -4305,7 +4742,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setLightEmittingDiodeManufacturer(String manufacturer,
-                                                  int instrumentIndex, int lightSourceIndex) {
+                                                  int instrumentIndex, int lightSourceIndex)
+    {
         LightEmittingDiode o = getLightEmittingDiode(instrumentIndex, lightSourceIndex);
         o.setManufacturer(toRType(manufacturer));
     }
@@ -4315,7 +4753,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setLightEmittingDiodeModel(String model, int instrumentIndex,
-                                           int lightSourceIndex) {
+                                           int lightSourceIndex)
+    {
         LightEmittingDiode o = getLightEmittingDiode(instrumentIndex, lightSourceIndex);
         o.setModel(toRType(model));
     }
@@ -4325,7 +4764,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setLightEmittingDiodePower(Power power, int instrumentIndex,
-                                           int lightSourceIndex) {
+                                           int lightSourceIndex)
+    {
         LightEmittingDiode o = getLightEmittingDiode(instrumentIndex, lightSourceIndex);
         o.setPower(convertPower(power));
     }
@@ -4335,7 +4775,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setLightEmittingDiodeSerialNumber(String serialNumber,
-                                                  int instrumentIndex, int lightSourceIndex) {
+                                                  int instrumentIndex, int lightSourceIndex)
+    {
         LightEmittingDiode o = getLightEmittingDiode(instrumentIndex, lightSourceIndex);
         o.setSerialNumber(toRType(serialNumber));
     }
@@ -4348,7 +4789,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setLightPathDichroicRef(String dichroic, int imageIndex,
-                                        int channelIndex) {
+                                        int channelIndex)
+    {
         LSID key = new LSID(LightPath.class, imageIndex, channelIndex);
         addReference(key, new LSID(dichroic));
     }
@@ -4358,7 +4800,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setLightPathEmissionFilterRef(String emissionFilter,
-                                              int imageIndex, int channelIndex, int emissionFilterRefIndex) {
+                                              int imageIndex, int channelIndex, int emissionFilterRefIndex)
+    {
         // Using this suffix is kind of a gross hack but the reference
         // processing logic does not easily handle multiple A --> B or B --> A
         // linkages of the same type so we'll compromise.
@@ -4373,7 +4816,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setLightPathExcitationFilterRef(String excitationFilter,
-                                                int imageIndex, int channelIndex, int excitationFilterRefIndex) {
+                                                int imageIndex, int channelIndex, int excitationFilterRefIndex)
+    {
         // Using this suffix is kind of a gross hack but the reference
         // processing logic does not easily handle multiple A --> B or B --> A
         // linkages of the same type so we'll compromise.
@@ -4386,10 +4830,11 @@ public class OMEROMetadataStoreClient
 
     //////// Line /////////
 
-    public Line getLine(int ROIIndex, int shapeIndex) {
+    public Line getLine(int ROIIndex, int shapeIndex)
+    {
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
-        indexes.put(Index.ROI_INDEX, ROIIndex);
+        indexes.put(Index.ROI_INDEX,ROIIndex);
         indexes.put(Index.SHAPE_INDEX, shapeIndex);
         return getSourceObject(Line.class, indexes);
     }
@@ -4398,11 +4843,12 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setLineID(java.lang.String, int, int)
      */
     @Override
-    public void setLineID(String id, int ROIIndex, int shapeIndex) {
+    public void setLineID(String id, int ROIIndex, int shapeIndex)
+    {
         checkDuplicateLSID(Line.class, id);
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
-        indexes.put(Index.ROI_INDEX, ROIIndex);
+        indexes.put(Index.ROI_INDEX,ROIIndex);
         indexes.put(Index.SHAPE_INDEX, shapeIndex);
         IObjectContainer o = getIObjectContainer(Line.class, indexes);
         o.LSID = id;
@@ -4413,7 +4859,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setLineText(java.lang.String, int, int)
      */
     @Override
-    public void setLineText(String text, int ROIIndex, int shapeIndex) {
+    public void setLineText(String text, int ROIIndex, int shapeIndex)
+    {
         Line o = getLine(ROIIndex, shapeIndex);
         o.setTextValue(toRType(text));
     }
@@ -4422,7 +4869,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setLineFillColor(ome.xml.model.primitives.Color, int, int)
      */
     @Override
-    public void setLineFillColor(Color fill, int ROIIndex, int shapeIndex) {
+    public void setLineFillColor(Color fill, int ROIIndex, int shapeIndex)
+    {
         Line o = getLine(ROIIndex, shapeIndex);
         o.setFillColor(toRType(fill));
     }
@@ -4431,7 +4879,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setLineFontSize(java.lang.Integer, int, int)
      */
     @Override
-    public void setLineFontSize(Length fontSize, int ROIIndex, int shapeIndex) {
+    public void setLineFontSize(Length fontSize, int ROIIndex, int shapeIndex)
+    {
         Line o = getLine(ROIIndex, shapeIndex);
         o.setFontSize(convertLength(fontSize));
     }
@@ -4440,7 +4889,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setLineStroke(ome.xml.model.primitives.Color, int, int)
      */
     @Override
-    public void setLineStrokeColor(Color stroke, int ROIIndex, int shapeIndex) {
+    public void setLineStrokeColor(Color stroke, int ROIIndex, int shapeIndex)
+    {
         Line o = getLine(ROIIndex, shapeIndex);
         o.setStrokeColor(toRType(stroke));
     }
@@ -4450,7 +4900,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setLineStrokeDashArray(String strokeDashArray, int ROIIndex,
-                                       int shapeIndex) {
+                                       int shapeIndex)
+    {
         Line o = getLine(ROIIndex, shapeIndex);
         o.setStrokeDashArray(toRType(strokeDashArray));
     }
@@ -4460,7 +4911,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setLineStrokeWidth(Length strokeWidth, int ROIIndex,
-                                   int shapeIndex) {
+                                   int shapeIndex)
+    {
         Line o = getLine(ROIIndex, shapeIndex);
         o.setStrokeWidth(convertLength(strokeWidth));
     }
@@ -4469,7 +4921,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setLineTheC(java.lang.Integer, int, int)
      */
     @Override
-    public void setLineTheC(NonNegativeInteger theC, int ROIIndex, int shapeIndex) {
+    public void setLineTheC(NonNegativeInteger theC, int ROIIndex, int shapeIndex)
+    {
         Line o = getLine(ROIIndex, shapeIndex);
         o.setTheC(toRType(theC));
     }
@@ -4478,7 +4931,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setLineTheT(java.lang.Integer, int, int)
      */
     @Override
-    public void setLineTheT(NonNegativeInteger theT, int ROIIndex, int shapeIndex) {
+    public void setLineTheT(NonNegativeInteger theT, int ROIIndex, int shapeIndex)
+    {
         Line o = getLine(ROIIndex, shapeIndex);
         o.setTheT(toRType(theT));
     }
@@ -4487,7 +4941,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setLineTheZ(java.lang.Integer, int, int)
      */
     @Override
-    public void setLineTheZ(NonNegativeInteger theZ, int ROIIndex, int shapeIndex) {
+    public void setLineTheZ(NonNegativeInteger theZ, int ROIIndex, int shapeIndex)
+    {
         Line o = getLine(ROIIndex, shapeIndex);
         o.setTheZ(toRType(theZ));
     }
@@ -4496,7 +4951,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setLineTransform(ome.xml.model.AffineTransform, int, int)
      */
     @Override
-    public void setLineTransform(AffineTransform transform, int ROIIndex, int shapeIndex) {
+    public void setLineTransform(AffineTransform transform, int ROIIndex, int shapeIndex)
+    {
         Line o = getLine(ROIIndex, shapeIndex);
         o.setTransform(toRType(transform));
     }
@@ -4505,7 +4961,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setLineX1(java.lang.Double, int, int)
      */
     @Override
-    public void setLineX1(Double x1, int ROIIndex, int shapeIndex) {
+    public void setLineX1(Double x1, int ROIIndex, int shapeIndex)
+    {
         Line o = getLine(ROIIndex, shapeIndex);
         o.setX1(toRType(x1));
     }
@@ -4514,7 +4971,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setLineX2(java.lang.Double, int, int)
      */
     @Override
-    public void setLineX2(Double x2, int ROIIndex, int shapeIndex) {
+    public void setLineX2(Double x2, int ROIIndex, int shapeIndex)
+    {
         Line o = getLine(ROIIndex, shapeIndex);
         o.setX2(toRType(x2));
     }
@@ -4523,7 +4981,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setLineY1(java.lang.Double, int, int)
      */
     @Override
-    public void setLineY1(Double y1, int ROIIndex, int shapeIndex) {
+    public void setLineY1(Double y1, int ROIIndex, int shapeIndex)
+    {
         Line o = getLine(ROIIndex, shapeIndex);
         o.setY1(toRType(y1));
     }
@@ -4532,7 +4991,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setLineY2(java.lang.Double, int, int)
      */
     @Override
-    public void setLineY2(Double y2, int ROIIndex, int shapeIndex) {
+    public void setLineY2(Double y2, int ROIIndex, int shapeIndex)
+    {
         Line o = getLine(ROIIndex, shapeIndex);
         o.setY2(toRType(y2));
     }
@@ -4540,7 +5000,8 @@ public class OMEROMetadataStoreClient
 
     //////// List Annotation /////////
 
-    public ListAnnotation getListAnnotation(int listAnnotationIndex) {
+    public ListAnnotation getListAnnotation(int listAnnotationIndex)
+    {
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
         indexes.put(Index.LIST_ANNOTATION_INDEX, listAnnotationIndex);
@@ -4551,7 +5012,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setListAnnotationID(java.lang.String, int)
      */
     @Override
-    public void setListAnnotationID(String id, int listAnnotationIndex) {
+    public void setListAnnotationID(String id, int listAnnotationIndex)
+    {
         checkDuplicateLSID(ListAnnotation.class, id);
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
@@ -4566,7 +5028,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setListAnnotationAnnotationRef(String annotation,
-                                               int listAnnotationIndex, int annotationRefIndex) {
+                                               int listAnnotationIndex, int annotationRefIndex)
+    {
         LSID key = new LSID(ListAnnotation.class, listAnnotationIndex);
         addReference(key, new LSID(annotation));
     }
@@ -4576,7 +5039,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setListAnnotationNamespace(String namespace,
-                                           int listAnnotationIndex) {
+                                           int listAnnotationIndex)
+    {
         ListAnnotation o = getListAnnotation(listAnnotationIndex);
         o.setNs(toRType(namespace));
     }
@@ -4584,7 +5048,8 @@ public class OMEROMetadataStoreClient
 
     //////// Long Annotation /////////
 
-    public LongAnnotation getLongAnnotation(int longAnnotationIndex) {
+    public LongAnnotation getLongAnnotation(int longAnnotationIndex)
+    {
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
         indexes.put(Index.LONG_ANNOTATION_INDEX, longAnnotationIndex);
@@ -4595,7 +5060,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setLongAnnotationID(java.lang.String, int)
      */
     @Override
-    public void setLongAnnotationID(String id, int longAnnotationIndex) {
+    public void setLongAnnotationID(String id, int longAnnotationIndex)
+    {
         checkDuplicateLSID(LongAnnotation.class, id);
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
@@ -4610,7 +5076,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setLongAnnotationNamespace(String namespace,
-                                           int longAnnotationIndex) {
+                                           int longAnnotationIndex)
+    {
         LongAnnotation o = getLongAnnotation(longAnnotationIndex);
         o.setNs(toRType(namespace));
     }
@@ -4619,14 +5086,16 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setLongAnnotationValue(java.lang.Long, int)
      */
     @Override
-    public void setLongAnnotationValue(Long value, int longAnnotationIndex) {
+    public void setLongAnnotationValue(Long value, int longAnnotationIndex)
+    {
         LongAnnotation o = getLongAnnotation(longAnnotationIndex);
         o.setLongValue(toRType(value));
     }
 
     ///////// Mask ////////
 
-    public Mask getMask(int ROIIndex, int shapeIndex) {
+    public Mask getMask(int ROIIndex, int shapeIndex)
+    {
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
         indexes.put(Index.ROI_INDEX, ROIIndex);
@@ -4635,9 +5104,11 @@ public class OMEROMetadataStoreClient
     }
 
     @Override
-    public void setMaskBinData(byte[] binData, int roiIndex, int shapeIndex) {
+    public void setMaskBinData(byte[] binData, int roiIndex, int shapeIndex)
+    {
         Mask o = getMask(roiIndex, shapeIndex);
-        if (o != null) {
+        if (o != null)
+        {
             o.setBytes(binData);
         }
     }
@@ -4662,7 +5133,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setMaskText(String description, int ROIIndex,
-                            int shapeIndex) {
+                            int shapeIndex)
+    {
         Mask o = getMask(ROIIndex, shapeIndex);
         o.setTextValue(toRType(description));
     }
@@ -4671,7 +5143,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setMaskFillColor(ome.xml.model.primitives.Color, int, int)
      */
     @Override
-    public void setMaskFillColor(Color fill, int ROIIndex, int shapeIndex) {
+    public void setMaskFillColor(Color fill, int ROIIndex, int shapeIndex)
+    {
         Mask o = getMask(ROIIndex, shapeIndex);
         o.setFillColor(toRType(fill));
     }
@@ -4680,7 +5153,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setMaskFontSize(java.lang.Integer, int, int)
      */
     @Override
-    public void setMaskFontSize(Length fontSize, int ROIIndex, int shapeIndex) {
+    public void setMaskFontSize(Length fontSize, int ROIIndex, int shapeIndex)
+    {
         Mask o = getMask(ROIIndex, shapeIndex);
         o.setFontSize(convertLength(fontSize));
     }
@@ -4689,7 +5163,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setMaskID(java.lang.String, int, int)
      */
     @Override
-    public void setMaskID(String id, int ROIIndex, int shapeIndex) {
+    public void setMaskID(String id, int ROIIndex, int shapeIndex)
+    {
         checkDuplicateLSID(Mask.class, id);
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
@@ -4704,7 +5179,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setMaskStroke(ome.xml.model.primitives.Color, int, int)
      */
     @Override
-    public void setMaskStrokeColor(Color stroke, int ROIIndex, int shapeIndex) {
+    public void setMaskStrokeColor(Color stroke, int ROIIndex, int shapeIndex)
+    {
         Mask o = getMask(ROIIndex, shapeIndex);
         o.setStrokeColor(toRType(stroke));
     }
@@ -4714,7 +5190,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setMaskStrokeDashArray(String strokeDashArray, int ROIIndex,
-                                       int shapeIndex) {
+                                       int shapeIndex)
+    {
         Mask o = getMask(ROIIndex, shapeIndex);
         o.setStrokeDashArray(toRType(strokeDashArray));
     }
@@ -4724,7 +5201,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setMaskStrokeWidth(Length strokeWidth, int ROIIndex,
-                                   int shapeIndex) {
+                                   int shapeIndex)
+    {
         Mask o = getMask(ROIIndex, shapeIndex);
         o.setStrokeWidth(convertLength(strokeWidth));
     }
@@ -4733,7 +5211,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setMaskTheC(java.lang.Integer, int, int)
      */
     @Override
-    public void setMaskTheC(NonNegativeInteger theC, int ROIIndex, int shapeIndex) {
+    public void setMaskTheC(NonNegativeInteger theC, int ROIIndex, int shapeIndex)
+    {
         Mask o = getMask(ROIIndex, shapeIndex);
         o.setTheC(toRType(theC));
     }
@@ -4742,7 +5221,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setMaskTheT(java.lang.Integer, int, int)
      */
     @Override
-    public void setMaskTheT(NonNegativeInteger theT, int ROIIndex, int shapeIndex) {
+    public void setMaskTheT(NonNegativeInteger theT, int ROIIndex, int shapeIndex)
+    {
         Mask o = getMask(ROIIndex, shapeIndex);
         o.setTheT(toRType(theT));
     }
@@ -4751,7 +5231,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setMaskTheZ(java.lang.Integer, int, int)
      */
     @Override
-    public void setMaskTheZ(NonNegativeInteger theZ, int ROIIndex, int shapeIndex) {
+    public void setMaskTheZ(NonNegativeInteger theZ, int ROIIndex, int shapeIndex)
+    {
         Mask o = getMask(ROIIndex, shapeIndex);
         o.setTheZ(toRType(theZ));
     }
@@ -4760,7 +5241,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setMaskTransform(java.lang.String, int, int)
      */
     @Override
-    public void setMaskTransform(AffineTransform transform, int ROIIndex, int shapeIndex) {
+    public void setMaskTransform(AffineTransform transform, int ROIIndex, int shapeIndex)
+    {
         Mask o = getMask(ROIIndex, shapeIndex);
         o.setTransform(toRType(transform));
     }
@@ -4769,7 +5251,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setMaskX(java.lang.Double, int, int)
      */
     @Override
-    public void setMaskX(Double x, int ROIIndex, int shapeIndex) {
+    public void setMaskX(Double x, int ROIIndex, int shapeIndex)
+    {
         Mask o = getMask(ROIIndex, shapeIndex);
         o.setX(toRType(x));
     }
@@ -4778,7 +5261,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setMaskY(java.lang.Double, int, int)
      */
     @Override
-    public void setMaskY(Double y, int ROIIndex, int shapeIndex) {
+    public void setMaskY(Double y, int ROIIndex, int shapeIndex)
+    {
         Mask o = getMask(ROIIndex, shapeIndex);
         o.setY(toRType(y));
     }
@@ -4787,7 +5271,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setMaskHeight(java.lang.Double, int, int)
      */
     @Override
-    public void setMaskHeight(Double height, int ROIIndex, int shapeIndex) {
+    public void setMaskHeight(Double height, int ROIIndex, int shapeIndex)
+    {
         Mask o = getMask(ROIIndex, shapeIndex);
         o.setHeight(toRType(height));
     }
@@ -4796,14 +5281,16 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setMaskWidth(java.lang.Double, int, int)
      */
     @Override
-    public void setMaskWidth(Double width, int ROIIndex, int shapeIndex) {
+    public void setMaskWidth(Double width, int ROIIndex, int shapeIndex)
+    {
         Mask o = getMask(ROIIndex, shapeIndex);
         o.setWidth(toRType(width));
     }
 
     //////// Microbean Manipulation /////////
 
-    public MicrobeamManipulation getMicrobeamManipulation(int experimentIndex, int microbeamManipulationIndex) {
+    public MicrobeamManipulation getMicrobeamManipulation(int experimentIndex, int microbeamManipulationIndex)
+    {
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
         indexes.put(Index.EXPERIMENT_INDEX, experimentIndex);
@@ -4816,7 +5303,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setMicrobeamManipulationID(String id, int experimentIndex,
-                                           int microbeamManipulationIndex) {
+                                           int microbeamManipulationIndex)
+    {
         checkDuplicateLSID(MicrobeamManipulation.class, id);
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
@@ -4828,7 +5316,8 @@ public class OMEROMetadataStoreClient
     }
 
     @Override
-    public void setMicrobeamManipulationDescription(String description, int experimentIndex, int microbeamManipulationIndex) {
+    public void setMicrobeamManipulationDescription(String description, int experimentIndex, int microbeamManipulationIndex)
+    {
         MicrobeamManipulation o = getMicrobeamManipulation(experimentIndex, microbeamManipulationIndex);
         o.setDescription(toRType(description));
     }
@@ -4838,7 +5327,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setMicrobeamManipulationExperimenterRef(String experimenter,
-                                                        int experimentIndex, int microbeamManipulationIndex) {
+                                                        int experimentIndex, int microbeamManipulationIndex)
+    {
         //LSID key = new LSID(MicrobeamManipulation.class, experimentIndex, microbeamManipulationIndex);
         //addReference(key, new LSID(experimenter));
     }
@@ -4849,7 +5339,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setMicrobeamManipulationROIRef(String roi, int experimentIndex,
-                                               int microbeamManipulationIndex, int ROIRefIndex) {
+                                               int microbeamManipulationIndex, int ROIRefIndex)
+    {
         LSID key = new LSID(MicrobeamManipulation.class, experimentIndex, microbeamManipulationIndex);
         addReference(key, new LSID(roi));
     }
@@ -4859,7 +5350,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setMicrobeamManipulationType(ome.xml.model.enums.MicrobeamManipulationType type,
-                                             int experimentIndex, int microbeamManipulationIndex) {
+                                             int experimentIndex, int microbeamManipulationIndex)
+    {
         MicrobeamManipulation o = getMicrobeamManipulation(experimentIndex, microbeamManipulationIndex);
         o.setType((MicrobeamManipulationType) getEnumeration(MicrobeamManipulationType.class, type.toString()));
     }
@@ -4867,7 +5359,8 @@ public class OMEROMetadataStoreClient
     ////////Microbeam Manipulation Light Source Settings /////////
 
     public LightSettings getMicrobeamManipulationLightSourceSettings(int experimentIndex, int microbeamManipulationIndex,
-                                                                     int lightSourceSettingsIndex) {
+                                                                     int lightSourceSettingsIndex)
+    {
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
         indexes.put(Index.EXPERIMENT_INDEX, experimentIndex);
@@ -4882,7 +5375,8 @@ public class OMEROMetadataStoreClient
     @Override
     public void setMicrobeamManipulationLightSourceSettingsID(String id,
                                                               int experimentIndex, int microbeamManipulationIndex,
-                                                              int lightSourceSettingsIndex) {
+                                                              int lightSourceSettingsIndex)
+    {
         getMicrobeamManipulationLightSourceSettings(
                 experimentIndex, microbeamManipulationIndex,
                 lightSourceSettingsIndex);
@@ -4897,7 +5391,8 @@ public class OMEROMetadataStoreClient
     @Override
     public void setMicrobeamManipulationLightSourceSettingsAttenuation(
             PercentFraction attenuation, int experimentIndex,
-            int microbeamManipulationIndex, int lightSourceSettingsIndex) {
+            int microbeamManipulationIndex, int lightSourceSettingsIndex)
+    {
         LightSettings o = getMicrobeamManipulationLightSourceSettings(experimentIndex,
                 microbeamManipulationIndex, lightSourceSettingsIndex);
         o.setAttenuation(toRType(attenuation));
@@ -4909,7 +5404,8 @@ public class OMEROMetadataStoreClient
     @Override
     public void setMicrobeamManipulationLightSourceSettingsWavelength(
             Length wavelength, int experimentIndex,
-            int microbeamManipulationIndex, int lightSourceSettingsIndex) {
+            int microbeamManipulationIndex, int lightSourceSettingsIndex)
+    {
         LightSettings o = getMicrobeamManipulationLightSourceSettings(experimentIndex,
                 microbeamManipulationIndex, lightSourceSettingsIndex);
         o.setWavelength(convertLength(wavelength));
@@ -4917,7 +5413,8 @@ public class OMEROMetadataStoreClient
 
     //////// Microscope ////////
 
-    private Microscope getMicroscope(int instrumentIndex) {
+    private Microscope getMicroscope(int instrumentIndex)
+    {
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
         indexes.put(Index.INSTRUMENT_INDEX, instrumentIndex);
@@ -4928,7 +5425,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setMicroscopeLotNumber(java.lang.String, int)
      */
     @Override
-    public void setMicroscopeLotNumber(String lotNumber, int instrumentIndex) {
+    public void setMicroscopeLotNumber(String lotNumber, int instrumentIndex)
+    {
         Microscope o = getMicroscope(instrumentIndex);
         o.setLotNumber(toRType(lotNumber));
     }
@@ -4938,7 +5436,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setMicroscopeManufacturer(String manufacturer,
-                                          int instrumentIndex) {
+                                          int instrumentIndex)
+    {
         Microscope o = getMicroscope(instrumentIndex);
         o.setManufacturer(toRType(manufacturer));
     }
@@ -4947,7 +5446,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setMicroscopeModel(java.lang.String, int)
      */
     @Override
-    public void setMicroscopeModel(String model, int instrumentIndex) {
+    public void setMicroscopeModel(String model, int instrumentIndex)
+    {
         Microscope o = getMicroscope(instrumentIndex);
         o.setModel(toRType(model));
     }
@@ -4957,7 +5457,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setMicroscopeSerialNumber(String serialNumber,
-                                          int instrumentIndex) {
+                                          int instrumentIndex)
+    {
         Microscope o = getMicroscope(instrumentIndex);
         o.setSerialNumber(toRType(serialNumber));
     }
@@ -4967,7 +5468,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setMicroscopeType(ome.xml.model.enums.MicroscopeType type,
-                                  int instrumentIndex) {
+                                  int instrumentIndex)
+    {
         Microscope o = getMicroscope(instrumentIndex);
         o.setType((MicroscopeType)
                 getEnumeration(MicroscopeType.class, type.toString()));
@@ -4975,7 +5477,8 @@ public class OMEROMetadataStoreClient
 
     //////// Objective /////////
 
-    public Objective getObjective(int instrumentIndex, int objectiveIndex) {
+    public Objective getObjective(int instrumentIndex, int objectiveIndex)
+    {
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
         indexes.put(Index.INSTRUMENT_INDEX, instrumentIndex);
@@ -4989,7 +5492,8 @@ public class OMEROMetadataStoreClient
     @Override
     public void setObjectiveCalibratedMagnification(
             Double calibratedMagnification, int instrumentIndex,
-            int objectiveIndex) {
+            int objectiveIndex)
+    {
         Objective o = getObjective(instrumentIndex, objectiveIndex);
         o.setCalibratedMagnification(toRType(calibratedMagnification));
     }
@@ -5000,7 +5504,8 @@ public class OMEROMetadataStoreClient
     @Override
     public void setObjectiveCorrection(
             ome.xml.model.enums.Correction correction, int instrumentIndex,
-            int objectiveIndex) {
+            int objectiveIndex)
+    {
         Objective o = getObjective(instrumentIndex, objectiveIndex);
         o.setCorrection((Correction) getEnumeration(
                 Correction.class, correction.toString()));
@@ -5011,7 +5516,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setObjectiveID(String id, int instrumentIndex,
-                               int objectiveIndex) {
+                               int objectiveIndex)
+    {
         checkDuplicateLSID(Objective.class, id);
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
@@ -5028,7 +5534,8 @@ public class OMEROMetadataStoreClient
     @Override
     public void setObjectiveImmersion(
             ome.xml.model.enums.Immersion immersion, int instrumentIndex,
-            int objectiveIndex) {
+            int objectiveIndex)
+    {
         Objective o = getObjective(instrumentIndex, objectiveIndex);
         o.setImmersion(
                 (Immersion) getEnumeration(Immersion.class, immersion.toString()));
@@ -5039,7 +5546,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setObjectiveIris(Boolean iris, int instrumentIndex,
-                                 int objectiveIndex) {
+                                 int objectiveIndex)
+    {
         Objective o = getObjective(instrumentIndex, objectiveIndex);
         o.setIris(toRType(iris));
     }
@@ -5049,7 +5557,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setObjectiveLensNA(Double lensNA, int instrumentIndex,
-                                   int objectiveIndex) {
+                                   int objectiveIndex)
+    {
         Objective o = getObjective(instrumentIndex, objectiveIndex);
         o.setLensNA(toRType(lensNA));
     }
@@ -5059,7 +5568,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setObjectiveLotNumber(String lotNumber, int instrumentIndex,
-                                      int objectiveIndex) {
+                                      int objectiveIndex)
+    {
         Objective o = getObjective(instrumentIndex, objectiveIndex);
         o.setLotNumber(toRType(lotNumber));
     }
@@ -5069,7 +5579,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setObjectiveManufacturer(String manufacturer,
-                                         int instrumentIndex, int objectiveIndex) {
+                                         int instrumentIndex, int objectiveIndex)
+    {
         Objective o = getObjective(instrumentIndex, objectiveIndex);
         o.setManufacturer(toRType(manufacturer));
     }
@@ -5079,7 +5590,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setObjectiveModel(String model, int instrumentIndex,
-                                  int objectiveIndex) {
+                                  int objectiveIndex)
+    {
         Objective o = getObjective(instrumentIndex, objectiveIndex);
         o.setModel(toRType(model));
     }
@@ -5089,7 +5601,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setObjectiveNominalMagnification(Double nominalMagnification,
-                                                 int instrumentIndex, int objectiveIndex) {
+                                                 int instrumentIndex, int objectiveIndex)
+    {
         Objective o = getObjective(instrumentIndex, objectiveIndex);
         o.setNominalMagnification(toRType(nominalMagnification));
     }
@@ -5099,7 +5612,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setObjectiveSerialNumber(String serialNumber,
-                                         int instrumentIndex, int objectiveIndex) {
+                                         int instrumentIndex, int objectiveIndex)
+    {
         Objective o = getObjective(instrumentIndex, objectiveIndex);
         o.setSerialNumber(toRType(serialNumber));
     }
@@ -5109,14 +5623,16 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setObjectiveWorkingDistance(Length workingDistance,
-                                            int instrumentIndex, int objectiveIndex) {
+                                            int instrumentIndex, int objectiveIndex)
+    {
         Objective o = getObjective(instrumentIndex, objectiveIndex);
         o.setWorkingDistance(convertLength(workingDistance));
     }
 
     //////// Pixels /////////
 
-    private Pixels getPixels(int imageIndex) {
+    private Pixels getPixels(int imageIndex)
+    {
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
         indexes.put(Index.IMAGE_INDEX, imageIndex);
@@ -5130,7 +5646,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPixelsID(java.lang.String, int)
      */
     @Override
-    public void setPixelsID(String id, int imageIndex) {
+    public void setPixelsID(String id, int imageIndex)
+    {
         checkDuplicateLSID(Pixels.class, id);
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
@@ -5144,7 +5661,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPixelsBigEndian(java.lang.Boolean,int)
      */
     @Override
-    public void setPixelsBigEndian(Boolean value, int index) {
+    public void setPixelsBigEndian(Boolean value, int index)
+    {
         ignoreUnneeded("setPixelsBigEndian", value, index);
     }
 
@@ -5158,7 +5676,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setPixelsBinDataBigEndian(Boolean bigEndian, int imageIndex,
-                                          int binDataIndex) {
+                                          int binDataIndex)
+    {
         ignoreUnneeded("setPixelsBinDataBigEndian", bigEndian, imageIndex);
     }
 
@@ -5177,7 +5696,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setPixelsDimensionOrder(
-            ome.xml.model.enums.DimensionOrder dimensionOrder, int imageIndex) {
+            ome.xml.model.enums.DimensionOrder dimensionOrder, int imageIndex)
+    {
         Pixels o = getPixels(imageIndex);
         // We're always the same dimension order in the server; force it to
         // "XYZCT" (ticket:3124, ticket:3718, ticket:3668)
@@ -5189,7 +5709,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPixelsInterleaved(java.lang.Boolean,int)
      */
     @Override
-    public void setPixelsInterleaved(Boolean value, int index) {
+    public void  setPixelsInterleaved(Boolean value,  int index)
+    {
         ignoreUnneeded("setPixelsInterleaved", value, index);
     }
 
@@ -5198,7 +5719,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPixelsPhysicalSizeX(ome.xml.model.primitives.PositiveFloat, int)
      */
     @Override
-    public void setPixelsPhysicalSizeX(Length physicalSizeX, int imageIndex) {
+    public void setPixelsPhysicalSizeX(Length physicalSizeX, int imageIndex)
+    {
         Pixels o = getPixels(imageIndex);
         o.setPhysicalSizeX(convertLength(physicalSizeX));
     }
@@ -5207,7 +5729,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPixelsPhysicalSizeY(ome.xml.model.primitives.PositiveFloat, int)
      */
     @Override
-    public void setPixelsPhysicalSizeY(Length physicalSizeY, int imageIndex) {
+    public void setPixelsPhysicalSizeY(Length physicalSizeY, int imageIndex)
+    {
         Pixels o = getPixels(imageIndex);
         o.setPhysicalSizeY(convertLength(physicalSizeY));
     }
@@ -5216,7 +5739,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPixelsPhysicalSizeZ(ome.xml.model.primitives.PositiveFloat, int)
      */
     @Override
-    public void setPixelsPhysicalSizeZ(Length physicalSizeZ, int imageIndex) {
+    public void setPixelsPhysicalSizeZ(Length physicalSizeZ, int imageIndex)
+    {
         Pixels o = getPixels(imageIndex);
         o.setPhysicalSizeZ(convertLength(physicalSizeZ));
     }
@@ -5225,7 +5749,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPixelsSignificantBits(ome.xml.model.primitives.PositiveInteger,int)
      */
     @Override
-    public void setPixelsSignificantBits(PositiveInteger value, int imageIndex) {
+    public void  setPixelsSignificantBits(PositiveInteger value,  int imageIndex)
+    {
         Pixels o = getPixels(imageIndex);
         o.setSignificantBits(toRType(value));
     }
@@ -5234,7 +5759,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPixelsSizeC(ome.xml.model.primitives.PositiveInteger, int)
      */
     @Override
-    public void setPixelsSizeC(PositiveInteger sizeC, int imageIndex) {
+    public void setPixelsSizeC(PositiveInteger sizeC, int imageIndex)
+    {
         Pixels o = getPixels(imageIndex);
         o.setSizeC(toRType(sizeC));
     }
@@ -5243,7 +5769,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPixelsSizeT(ome.xml.model.primitives.PositiveInteger, int)
      */
     @Override
-    public void setPixelsSizeT(PositiveInteger sizeT, int imageIndex) {
+    public void setPixelsSizeT(PositiveInteger sizeT, int imageIndex)
+    {
         Pixels o = getPixels(imageIndex);
         o.setSizeT(toRType(sizeT));
     }
@@ -5252,7 +5779,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPixelsSizeX(ome.xml.model.primitives.PositiveInteger, int)
      */
     @Override
-    public void setPixelsSizeX(PositiveInteger sizeX, int imageIndex) {
+    public void setPixelsSizeX(PositiveInteger sizeX, int imageIndex)
+    {
         Pixels o = getPixels(imageIndex);
         o.setSizeX(toRType(sizeX));
     }
@@ -5261,7 +5789,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPixelsSizeY(ome.xml.model.primitives.PositiveInteger, int)
      */
     @Override
-    public void setPixelsSizeY(PositiveInteger sizeY, int imageIndex) {
+    public void setPixelsSizeY(PositiveInteger sizeY, int imageIndex)
+    {
         Pixels o = getPixels(imageIndex);
         o.setSizeY(toRType(sizeY));
     }
@@ -5270,7 +5799,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPixelsSizeZ(ome.xml.model.primitives.PositiveInteger, int)
      */
     @Override
-    public void setPixelsSizeZ(PositiveInteger sizeZ, int imageIndex) {
+    public void setPixelsSizeZ(PositiveInteger sizeZ, int imageIndex)
+    {
         Pixels o = getPixels(imageIndex);
         o.setSizeZ(toRType(sizeZ));
     }
@@ -5279,7 +5809,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPixelsTimeIncrement(java.lang.Double, int)
      */
     @Override
-    public void setPixelsTimeIncrement(Time timeIncrement, int imageIndex) {
+    public void setPixelsTimeIncrement(Time timeIncrement, int imageIndex)
+    {
         Pixels o = getPixels(imageIndex);
         o.setTimeIncrement(toRType(timeIncrement));
     }
@@ -5288,7 +5819,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPixelsType(ome.xml.model.enums.PixelType, int)
      */
     @Override
-    public void setPixelsType(PixelType type, int imageIndex) {
+    public void setPixelsType(PixelType type, int imageIndex)
+    {
         Pixels o = getPixels(imageIndex);
         o.setPixelsType(
                 (PixelsType) getEnumeration(PixelsType.class, type.toString()));
@@ -5296,7 +5828,8 @@ public class OMEROMetadataStoreClient
 
     //////// Plane /////////
 
-    private PlaneInfo getPlane(int imageIndex, int planeIndex) {
+    private PlaneInfo getPlane(int imageIndex, int planeIndex)
+    {
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
         indexes.put(Index.IMAGE_INDEX, imageIndex);
@@ -5309,7 +5842,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setPlaneAnnotationRef(String annotation, int imageIndex,
-                                      int planeIndex, int annotationRefIndex) {
+                                      int planeIndex, int annotationRefIndex)
+    {
         LSID key = new LSID(
                 PlaneInfo.class, imageIndex, planeIndex);
         addReference(key, new LSID(annotation));
@@ -5319,7 +5853,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPlaneDeltaT(java.lang.Double, int, int)
      */
     @Override
-    public void setPlaneDeltaT(Time deltaT, int imageIndex, int planeIndex) {
+    public void setPlaneDeltaT(Time deltaT, int imageIndex, int planeIndex)
+    {
         PlaneInfo o = getPlane(imageIndex, planeIndex);
         o.setDeltaT(convertTime(deltaT));
     }
@@ -5329,7 +5864,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setPlaneExposureTime(Time exposureTime, int imageIndex,
-                                     int planeIndex) {
+                                     int planeIndex)
+    {
         PlaneInfo o = getPlane(imageIndex, planeIndex);
         o.setExposureTime(convertTime(exposureTime));
     }
@@ -5338,7 +5874,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPlaneHashSHA1(java.lang.String, int, int)
      */
     @Override
-    public void setPlaneHashSHA1(String hashSHA1, int imageIndex, int planeIndex) {
+    public void setPlaneHashSHA1(String hashSHA1, int imageIndex, int planeIndex)
+    {
         ignoreUnneeded("setPlaneHashSHA1", hashSHA1, imageIndex, planeIndex);
     }
 
@@ -5347,7 +5884,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setPlanePositionX(Length positionX, int imageIndex,
-                                  int planeIndex) {
+                                  int planeIndex)
+    {
         PlaneInfo o = getPlane(imageIndex, planeIndex);
         o.setPositionX(convertLength(positionX));
     }
@@ -5357,7 +5895,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setPlanePositionY(Length positionY, int imageIndex,
-                                  int planeIndex) {
+                                  int planeIndex)
+    {
         PlaneInfo o = getPlane(imageIndex, planeIndex);
         o.setPositionY(convertLength(positionY));
     }
@@ -5367,7 +5906,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setPlanePositionZ(Length positionZ, int imageIndex,
-                                  int planeIndex) {
+                                  int planeIndex)
+    {
         PlaneInfo o = getPlane(imageIndex, planeIndex);
         o.setPositionZ(convertLength(positionZ));
     }
@@ -5376,7 +5916,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPlaneTheC(java.lang.Integer, int, int)
      */
     @Override
-    public void setPlaneTheC(NonNegativeInteger theC, int imageIndex, int planeIndex) {
+    public void setPlaneTheC(NonNegativeInteger theC, int imageIndex, int planeIndex)
+    {
         PlaneInfo o = getPlane(imageIndex, planeIndex);
         o.setTheC(toRType(theC));
     }
@@ -5385,7 +5926,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPlaneTheT(java.lang.Integer, int, int)
      */
     @Override
-    public void setPlaneTheT(NonNegativeInteger theT, int imageIndex, int planeIndex) {
+    public void setPlaneTheT(NonNegativeInteger theT, int imageIndex, int planeIndex)
+    {
         PlaneInfo o = getPlane(imageIndex, planeIndex);
         o.setTheT(toRType(theT));
     }
@@ -5394,7 +5936,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPlaneTheZ(java.lang.Integer, int, int)
      */
     @Override
-    public void setPlaneTheZ(NonNegativeInteger theZ, int imageIndex, int planeIndex) {
+    public void setPlaneTheZ(NonNegativeInteger theZ, int imageIndex, int planeIndex)
+    {
         PlaneInfo o = getPlane(imageIndex, planeIndex);
         o.setTheZ(toRType(theZ));
     }
@@ -5402,7 +5945,8 @@ public class OMEROMetadataStoreClient
     //////// PlateAcquisition /////////
 
     private PlateAcquisition getPlateAcquisition(
-            int plateIndex, int plateAcquisitionIndex) {
+            int plateIndex, int plateAcquisitionIndex)
+    {
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
         indexes.put(Index.PLATE_INDEX, plateIndex);
@@ -5415,7 +5959,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setPlateAcquisitionAnnotationRef(String annotation,
-                                                 int plateIndex, int plateAcquisitionIndex, int annotationRefIndex) {
+                                                 int plateIndex, int plateAcquisitionIndex, int annotationRefIndex)
+    {
         LSID key = new LSID(PlateAcquisition.class, plateIndex,
                 plateAcquisitionIndex);
         addReference(key, new LSID(annotation));
@@ -5426,7 +5971,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setPlateAcquisitionDescription(String description,
-                                               int plateIndex, int plateAcquisitionIndex) {
+                                               int plateIndex, int plateAcquisitionIndex)
+    {
         PlateAcquisition o =
                 getPlateAcquisition(plateIndex, plateAcquisitionIndex);
         o.setDescription(toRType(description));
@@ -5437,7 +5983,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setPlateAcquisitionEndTime(Timestamp endTime, int plateIndex,
-                                           int plateAcquisitionIndex) {
+                                           int plateAcquisitionIndex)
+    {
         PlateAcquisition o =
                 getPlateAcquisition(plateIndex, plateAcquisitionIndex);
         o.setEndTime(toRType(endTime));
@@ -5448,7 +5995,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setPlateAcquisitionID(String id, int plateIndex,
-                                      int plateAcquisitionIndex) {
+                                      int plateAcquisitionIndex)
+    {
         checkDuplicateLSID(PlateAcquisition.class, id);
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
@@ -5465,7 +6013,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setPlateAcquisitionMaximumFieldCount(PositiveInteger maximumFieldCount,
-                                                     int plateIndex, int plateAcquisitionIndex) {
+                                                     int plateIndex, int plateAcquisitionIndex)
+    {
         PlateAcquisition o =
                 getPlateAcquisition(plateIndex, plateAcquisitionIndex);
         o.setMaximumFieldCount(toRType(maximumFieldCount));
@@ -5476,7 +6025,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setPlateAcquisitionName(String name, int plateIndex,
-                                        int plateAcquisitionIndex) {
+                                        int plateAcquisitionIndex)
+    {
         PlateAcquisition o =
                 getPlateAcquisition(plateIndex, plateAcquisitionIndex);
         o.setName(toRType(name));
@@ -5487,7 +6037,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setPlateAcquisitionStartTime(Timestamp startTime, int plateIndex,
-                                             int plateAcquisitionIndex) {
+                                             int plateAcquisitionIndex)
+    {
         PlateAcquisition o =
                 getPlateAcquisition(plateIndex, plateAcquisitionIndex);
         o.setStartTime(toRType(startTime));
@@ -5498,7 +6049,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setPlateAcquisitionWellSampleRef(String wellSample,
-                                                 int plateIndex, int plateAcquisitionIndex, int wellSampleRefIndex) {
+                                                 int plateIndex, int plateAcquisitionIndex, int wellSampleRefIndex)
+    {
         LSID key = new LSID(PlateAcquisition.class, plateIndex,
                 plateAcquisitionIndex);
         addReference(key, new LSID(wellSample));
@@ -5506,7 +6058,8 @@ public class OMEROMetadataStoreClient
 
     //////// Plate /////////
 
-    private Plate getPlate(int plateIndex) {
+    private Plate getPlate(int plateIndex)
+    {
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
         indexes.put(Index.PLATE_INDEX, plateIndex);
@@ -5518,7 +6071,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setPlateAnnotationRef(String annotation, int plateIndex,
-                                      int annotationRefIndex) {
+                                      int annotationRefIndex)
+    {
         LSID key = new LSID(Plate.class, plateIndex);
         addReference(key, new LSID(annotation));
     }
@@ -5528,7 +6082,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setPlateColumnNamingConvention(
-            NamingConvention columnNamingConvention, int plateIndex) {
+            NamingConvention columnNamingConvention, int plateIndex)
+    {
         Plate o = getPlate(plateIndex);
         o.setColumnNamingConvention(toRType(columnNamingConvention));
     }
@@ -5537,7 +6092,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPlateColumns(java.lang.Integer, int)
      */
     @Override
-    public void setPlateColumns(PositiveInteger columns, int plateIndex) {
+    public void setPlateColumns(PositiveInteger columns, int plateIndex)
+    {
         Plate o = getPlate(plateIndex);
         o.setColumns(toRType(columns));
     }
@@ -5546,7 +6102,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPlateDescription(java.lang.String, int)
      */
     @Override
-    public void setPlateDescription(String description, int plateIndex) {
+    public void setPlateDescription(String description, int plateIndex)
+    {
         Plate o = getPlate(plateIndex);
         o.setDescription(toRType(description));
     }
@@ -5556,7 +6113,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setPlateExternalIdentifier(String externalIdentifier,
-                                           int plateIndex) {
+                                           int plateIndex)
+    {
         Plate o = getPlate(plateIndex);
         o.setExternalIdentifier(toRType(externalIdentifier));
     }
@@ -5565,7 +6123,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPlateID(java.lang.String, int)
      */
     @Override
-    public void setPlateID(String id, int plateIndex) {
+    public void setPlateID(String id, int plateIndex)
+    {
         checkDuplicateLSID(Plate.class, id);
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
@@ -5579,7 +6138,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPlateName(java.lang.String, int)
      */
     @Override
-    public void setPlateName(String name, int plateIndex) {
+    public void setPlateName(String name, int plateIndex)
+    {
         Plate o = getPlate(plateIndex);
         o.setName(toRType(name));
     }
@@ -5589,7 +6149,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setPlateRowNamingConvention(
-            NamingConvention rowNamingConvention, int plateIndex) {
+            NamingConvention rowNamingConvention, int plateIndex)
+    {
         Plate o = getPlate(plateIndex);
         o.setRowNamingConvention(toRType(rowNamingConvention));
     }
@@ -5598,7 +6159,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPlateRows(java.lang.Integer, int)
      */
     @Override
-    public void setPlateRows(PositiveInteger rows, int plateIndex) {
+    public void setPlateRows(PositiveInteger rows, int plateIndex)
+    {
         Plate o = getPlate(plateIndex);
         o.setRows(toRType(rows));
     }
@@ -5607,7 +6169,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPlateStatus(java.lang.String, int)
      */
     @Override
-    public void setPlateStatus(String status, int plateIndex) {
+    public void setPlateStatus(String status, int plateIndex)
+    {
         Plate o = getPlate(plateIndex);
         o.setStatus(toRType(status));
     }
@@ -5616,7 +6179,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPlateWellOriginX(java.lang.Double, int)
      */
     @Override
-    public void setPlateWellOriginX(Length wellOriginX, int plateIndex) {
+    public void setPlateWellOriginX(Length wellOriginX, int plateIndex)
+    {
         Plate o = getPlate(plateIndex);
         o.setWellOriginX(convertLength(wellOriginX));
     }
@@ -5625,14 +6189,16 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPlateWellOriginY(java.lang.Double, int)
      */
     @Override
-    public void setPlateWellOriginY(Length wellOriginY, int plateIndex) {
+    public void setPlateWellOriginY(Length wellOriginY, int plateIndex)
+    {
         Plate o = getPlate(plateIndex);
         o.setWellOriginY(convertLength(wellOriginY));
     }
 
     //////// Point /////////
 
-    private Point getPoint(int ROIIndex, int shapeIndex) {
+    private Point getPoint(int ROIIndex, int shapeIndex)
+    {
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
         indexes.put(Index.ROI_INDEX, ROIIndex);
@@ -5644,7 +6210,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPointText(java.lang.String, int, int)
      */
     @Override
-    public void setPointText(String text, int ROIIndex, int shapeIndex) {
+    public void setPointText(String text, int ROIIndex, int shapeIndex)
+    {
         Point o = getPoint(ROIIndex, shapeIndex);
         o.setTextValue(toRType(text));
     }
@@ -5653,7 +6220,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPointFillColor(ome.xml.model.primitives.Color, int, int)
      */
     @Override
-    public void setPointFillColor(Color fill, int ROIIndex, int shapeIndex) {
+    public void setPointFillColor(Color fill, int ROIIndex, int shapeIndex)
+    {
         Point o = getPoint(ROIIndex, shapeIndex);
         o.setFillColor(toRType(fill));
     }
@@ -5662,7 +6230,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPointFontSize(java.lang.Integer, int, int)
      */
     @Override
-    public void setPointFontSize(Length fontSize, int ROIIndex, int shapeIndex) {
+    public void setPointFontSize(Length fontSize, int ROIIndex, int shapeIndex)
+    {
         Point o = getPoint(ROIIndex, shapeIndex);
         o.setFontSize(convertLength(fontSize));
     }
@@ -5671,7 +6240,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPointID(java.lang.String, int, int)
      */
     @Override
-    public void setPointID(String id, int ROIIndex, int shapeIndex) {
+    public void setPointID(String id, int ROIIndex, int shapeIndex)
+    {
         checkDuplicateLSID(Point.class, id);
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
@@ -5686,7 +6256,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPointStroke(ome.xml.model.primitives.Color, int, int)
      */
     @Override
-    public void setPointStrokeColor(Color stroke, int ROIIndex, int shapeIndex) {
+    public void setPointStrokeColor(Color stroke, int ROIIndex, int shapeIndex)
+    {
         Point o = getPoint(ROIIndex, shapeIndex);
         o.setStrokeColor(toRType(stroke));
     }
@@ -5696,7 +6267,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setPointStrokeDashArray(String strokeDashArray, int ROIIndex,
-                                        int shapeIndex) {
+                                        int shapeIndex)
+    {
         Point o = getPoint(ROIIndex, shapeIndex);
         o.setStrokeDashArray(toRType(strokeDashArray));
     }
@@ -5706,7 +6278,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setPointStrokeWidth(Length strokeWidth, int ROIIndex,
-                                    int shapeIndex) {
+                                    int shapeIndex)
+    {
         Point o = getPoint(ROIIndex, shapeIndex);
         o.setStrokeWidth(convertLength(strokeWidth));
     }
@@ -5715,7 +6288,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPointTheC(java.lang.Integer, int, int)
      */
     @Override
-    public void setPointTheC(NonNegativeInteger theC, int ROIIndex, int shapeIndex) {
+    public void setPointTheC(NonNegativeInteger theC, int ROIIndex, int shapeIndex)
+    {
         Point o = getPoint(ROIIndex, shapeIndex);
         o.setTheC(toRType(theC));
     }
@@ -5724,7 +6298,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPointTheT(java.lang.Integer, int, int)
      */
     @Override
-    public void setPointTheT(NonNegativeInteger theT, int ROIIndex, int shapeIndex) {
+    public void setPointTheT(NonNegativeInteger theT, int ROIIndex, int shapeIndex)
+    {
         Point o = getPoint(ROIIndex, shapeIndex);
         o.setTheT(toRType(theT));
     }
@@ -5733,7 +6308,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPointTheZ(java.lang.Integer, int, int)
      */
     @Override
-    public void setPointTheZ(NonNegativeInteger theZ, int ROIIndex, int shapeIndex) {
+    public void setPointTheZ(NonNegativeInteger theZ, int ROIIndex, int shapeIndex)
+    {
         Point o = getPoint(ROIIndex, shapeIndex);
         o.setTheZ(toRType(theZ));
     }
@@ -5742,7 +6318,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPointTransform(ome.xml.model.AffineTransform, int, int)
      */
     @Override
-    public void setPointTransform(AffineTransform transform, int ROIIndex, int shapeIndex) {
+    public void setPointTransform(AffineTransform transform, int ROIIndex, int shapeIndex)
+    {
         Point o = getPoint(ROIIndex, shapeIndex);
         o.setTransform(toRType(transform));
     }
@@ -5751,7 +6328,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPointX(java.lang.Double, int, int)
      */
     @Override
-    public void setPointX(Double x, int ROIIndex, int shapeIndex) {
+    public void setPointX(Double x, int ROIIndex, int shapeIndex)
+    {
         Point o = getPoint(ROIIndex, shapeIndex);
         o.setX(toRType(x));
     }
@@ -5760,14 +6338,16 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPointY(java.lang.Double, int, int)
      */
     @Override
-    public void setPointY(Double y, int ROIIndex, int shapeIndex) {
+    public void setPointY(Double y, int ROIIndex, int shapeIndex)
+    {
         Point o = getPoint(ROIIndex, shapeIndex);
         o.setY(toRType(y));
     }
 
     //////// Polyline /////////
 
-    private Polyline getPolyline(int ROIIndex, int shapeIndex) {
+    private Polyline getPolyline(int ROIIndex, int shapeIndex)
+    {
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
         indexes.put(Index.ROI_INDEX, ROIIndex);
@@ -5779,7 +6359,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPolylineID(java.lang.String, int, int)
      */
     @Override
-    public void setPolylineID(String id, int ROIIndex, int shapeIndex) {
+    public void setPolylineID(String id, int ROIIndex, int shapeIndex)
+    {
         checkDuplicateLSID(Polyline.class, id);
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
@@ -5794,7 +6375,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPolylineText(java.lang.String, int, int)
      */
     @Override
-    public void setPolylineText(String text, int ROIIndex, int shapeIndex) {
+    public void setPolylineText(String text, int ROIIndex, int shapeIndex)
+    {
         Polyline o = getPolyline(ROIIndex, shapeIndex);
         o.setTextValue(toRType(text));
     }
@@ -5803,7 +6385,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPolylineFillColor(ome.xml.model.primitives.Color, int, int)
      */
     @Override
-    public void setPolylineFillColor(Color fill, int ROIIndex, int shapeIndex) {
+    public void setPolylineFillColor(Color fill, int ROIIndex, int shapeIndex)
+    {
         Polyline o = getPolyline(ROIIndex, shapeIndex);
         o.setFillColor(toRType(fill));
     }
@@ -5813,7 +6396,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setPolylineFontSize(Length fontSize, int ROIIndex,
-                                    int shapeIndex) {
+                                    int shapeIndex)
+    {
         Polyline o = getPolyline(ROIIndex, shapeIndex);
         o.setFontSize(convertLength(fontSize));
     }
@@ -5822,7 +6406,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPolylinePoints(java.lang.String, int, int)
      */
     @Override
-    public void setPolylinePoints(String points, int ROIIndex, int shapeIndex) {
+    public void setPolylinePoints(String points, int ROIIndex, int shapeIndex)
+    {
         Polyline o = getPolyline(ROIIndex, shapeIndex);
         o.setPoints(toRType(points));
     }
@@ -5831,7 +6416,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPolylineStroke(ome.xml.model.primitives.Color, int, int)
      */
     @Override
-    public void setPolylineStrokeColor(Color stroke, int ROIIndex, int shapeIndex) {
+    public void setPolylineStrokeColor(Color stroke, int ROIIndex, int shapeIndex)
+    {
         Polyline o = getPolyline(ROIIndex, shapeIndex);
         o.setStrokeColor(toRType(stroke));
     }
@@ -5841,7 +6427,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setPolylineStrokeDashArray(String strokeDashArray,
-                                           int ROIIndex, int shapeIndex) {
+                                           int ROIIndex, int shapeIndex)
+    {
         Polyline o = getPolyline(ROIIndex, shapeIndex);
         o.setStrokeDashArray(toRType(strokeDashArray));
     }
@@ -5851,7 +6438,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setPolylineStrokeWidth(Length strokeWidth, int ROIIndex,
-                                       int shapeIndex) {
+                                       int shapeIndex)
+    {
         Polyline o = getPolyline(ROIIndex, shapeIndex);
         o.setStrokeWidth(convertLength(strokeWidth));
     }
@@ -5860,7 +6448,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPolylineTheC(java.lang.Integer, int, int)
      */
     @Override
-    public void setPolylineTheC(NonNegativeInteger theC, int ROIIndex, int shapeIndex) {
+    public void setPolylineTheC(NonNegativeInteger theC, int ROIIndex, int shapeIndex)
+    {
         Polyline o = getPolyline(ROIIndex, shapeIndex);
         o.setTheC(toRType(theC));
     }
@@ -5869,7 +6458,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPolylineTheT(java.lang.Integer, int, int)
      */
     @Override
-    public void setPolylineTheT(NonNegativeInteger theT, int ROIIndex, int shapeIndex) {
+    public void setPolylineTheT(NonNegativeInteger theT, int ROIIndex, int shapeIndex)
+    {
         Polyline o = getPolyline(ROIIndex, shapeIndex);
         o.setTheT(toRType(theT));
     }
@@ -5878,7 +6468,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPolylineTheZ(java.lang.Integer, int, int)
      */
     @Override
-    public void setPolylineTheZ(NonNegativeInteger theZ, int ROIIndex, int shapeIndex) {
+    public void setPolylineTheZ(NonNegativeInteger theZ, int ROIIndex, int shapeIndex)
+    {
         Polyline o = getPolyline(ROIIndex, shapeIndex);
         o.setTheZ(toRType(theZ));
     }
@@ -5888,7 +6479,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setPolylineTransform(AffineTransform transform, int ROIIndex,
-                                     int shapeIndex) {
+                                     int shapeIndex)
+    {
         Polyline o = getPolyline(ROIIndex, shapeIndex);
         o.setTransform(toRType(transform));
     }
@@ -5899,7 +6491,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setProjectID(java.lang.String, int)
      */
     @Override
-    public void setProjectID(String id, int projectIndex) {
+    public void setProjectID(String id, int projectIndex)
+    {
         ignoreUnsupported("setProjectID", id, projectIndex);
     }
 
@@ -5908,7 +6501,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setProjectAnnotationRef(String annotation, int projectIndex,
-                                        int annotationRefIndex) {
+                                        int annotationRefIndex)
+    {
         ignoreUnsupported("setProjectAnnotationRef", annotation, projectIndex,
                 annotationRefIndex);
     }
@@ -5917,7 +6511,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setProjectDescription(java.lang.String, int)
      */
     @Override
-    public void setProjectDescription(String description, int projectIndex) {
+    public void setProjectDescription(String description, int projectIndex)
+    {
         ignoreUnsupported("setProjectDescription", description, projectIndex);
     }
 
@@ -5925,7 +6520,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setProjectExperimenterRef(java.lang.String, int)
      */
     @Override
-    public void setProjectExperimenterRef(String experimenter, int projectIndex) {
+    public void setProjectExperimenterRef(String experimenter, int projectIndex)
+    {
         ignoreInsecure("setProjectExperimenterRef", experimenter, projectIndex);
     }
 
@@ -5933,7 +6529,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setProjectExperimenterGroupRef(java.lang.String, int)
      */
     @Override
-    public void setProjectExperimenterGroupRef(String group, int projectIndex) {
+    public void setProjectExperimenterGroupRef(String group, int projectIndex)
+    {
         ignoreInsecure("setProjectExperimenterGroupRef", group, projectIndex);
     }
 
@@ -5941,13 +6538,15 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setProjectName(java.lang.String, int)
      */
     @Override
-    public void setProjectName(String name, int projectIndex) {
+    public void setProjectName(String name, int projectIndex)
+    {
         ignoreInsecure("setProjectName", name, projectIndex);
     }
 
     //////// ROI /////////
 
-    private Roi getROI(int ROIIndex) {
+    private Roi getROI(int ROIIndex)
+    {
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
         indexes.put(Index.ROI_INDEX, ROIIndex);
@@ -5958,7 +6557,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setROIID(java.lang.String, int)
      */
     @Override
-    public void setROIID(String id, int ROIIndex) {
+    public void setROIID(String id, int ROIIndex)
+    {
         checkDuplicateLSID(Roi.class, id);
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
@@ -5973,7 +6573,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setROIAnnotationRef(String annotation, int ROIIndex,
-                                    int annotationRefIndex) {
+                                    int annotationRefIndex)
+    {
         LSID key = new LSID(Roi.class, ROIIndex);
         addReference(key, new LSID(annotation));
     }
@@ -5982,7 +6583,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setROIDescription(java.lang.String, int)
      */
     @Override
-    public void setROIDescription(String description, int ROIIndex) {
+    public void setROIDescription(String description, int ROIIndex)
+    {
         Roi o = getROI(ROIIndex);
         o.setDescription(toRType(description));
     }
@@ -5991,7 +6593,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setROIName(java.lang.String, int)
      */
     @Override
-    public void setROIName(String name, int ROIIndex) {
+    public void setROIName(String name, int ROIIndex)
+    {
         ignoreMissing("setROIName", name, ROIIndex);
     }
 
@@ -5999,12 +6602,12 @@ public class OMEROMetadataStoreClient
 
     /**
      * Retrieve Reagent
-     *
-     * @param screenIndex  the index of the screen
+     * @param screenIndex the index of the screen
      * @param reagentIndex the index of the reagent within the screen
      * @return the reagent
      */
-    private Reagent getReagent(int screenIndex, int reagentIndex) {
+    private Reagent getReagent(int screenIndex, int reagentIndex)
+    {
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
         indexes.put(Index.SCREEN_INDEX, screenIndex);
@@ -6016,7 +6619,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setReagentID(java.lang.String, int, int)
      */
     @Override
-    public void setReagentID(String id, int screenIndex, int reagentIndex) {
+    public void setReagentID(String id, int screenIndex, int reagentIndex)
+    {
         checkDuplicateLSID(Reagent.class, id);
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
@@ -6032,7 +6636,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setReagentAnnotationRef(String annotation, int screenIndex,
-                                        int reagentIndex, int annotationRefIndex) {
+                                        int reagentIndex, int annotationRefIndex)
+    {
         LSID key = new LSID(Reagent.class, screenIndex, reagentIndex);
         addReference(key, new LSID(annotation));
     }
@@ -6042,7 +6647,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setReagentDescription(String description, int screenIndex,
-                                      int reagentIndex) {
+                                      int reagentIndex)
+    {
         Reagent o = getReagent(screenIndex, reagentIndex);
         o.setDescription(toRType(description));
     }
@@ -6051,7 +6657,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setReagentName(java.lang.String, int, int)
      */
     @Override
-    public void setReagentName(String name, int screenIndex, int reagentIndex) {
+    public void setReagentName(String name, int screenIndex, int reagentIndex)
+    {
         Reagent o = getReagent(screenIndex, reagentIndex);
         o.setName(toRType(name));
     }
@@ -6061,7 +6668,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setReagentReagentIdentifier(String reagentIdentifier,
-                                            int screenIndex, int reagentIndex) {
+                                            int screenIndex, int reagentIndex)
+    {
         Reagent o = getReagent(screenIndex, reagentIndex);
         o.setReagentIdentifier(toRType(reagentIdentifier));
     }
@@ -6071,12 +6679,12 @@ public class OMEROMetadataStoreClient
 
     /**
      * Retrieve the Rectangle object.
-     *
-     * @param ROIIndex   the index of the ROI
+     * @param ROIIndex the index of the ROI
      * @param shapeIndex the index of the shape within the ROI
      * @return the rectangle
      */
-    private Rectangle getRectangle(int ROIIndex, int shapeIndex) {
+    private Rectangle getRectangle(int ROIIndex, int shapeIndex)
+    {
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
         indexes.put(Index.ROI_INDEX, ROIIndex);
@@ -6088,7 +6696,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setRectangleID(java.lang.String, int, int)
      */
     @Override
-    public void setRectangleID(String id, int ROIIndex, int shapeIndex) {
+    public void setRectangleID(String id, int ROIIndex, int shapeIndex)
+    {
         checkDuplicateLSID(Rectangle.class, id);
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
@@ -6104,7 +6713,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setRectangleText(String description, int ROIIndex,
-                                 int shapeIndex) {
+                                 int shapeIndex)
+    {
         Rectangle o = getRectangle(ROIIndex, shapeIndex);
         o.setTextValue(toRType(description));
     }
@@ -6113,7 +6723,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setRectangleFillColor(ome.xml.model.primitives.Color, int, int)
      */
     @Override
-    public void setRectangleFillColor(Color fill, int ROIIndex, int shapeIndex) {
+    public void setRectangleFillColor(Color fill, int ROIIndex, int shapeIndex)
+    {
         Rectangle o = getRectangle(ROIIndex, shapeIndex);
         o.setFillColor(toRType(fill));
     }
@@ -6123,7 +6734,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setRectangleFontSize(Length fontSize, int ROIIndex,
-                                     int shapeIndex) {
+                                     int shapeIndex)
+    {
         Rectangle o = getRectangle(ROIIndex, shapeIndex);
         o.setFontSize(convertLength(fontSize));
     }
@@ -6132,7 +6744,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setRectangleHeight(java.lang.Double, int, int)
      */
     @Override
-    public void setRectangleHeight(Double height, int ROIIndex, int shapeIndex) {
+    public void setRectangleHeight(Double height, int ROIIndex, int shapeIndex)
+    {
         Rectangle o = getRectangle(ROIIndex, shapeIndex);
         o.setHeight(toRType(height));
     }
@@ -6141,7 +6754,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setRectangleStroke(ome.xml.model.primitives.Color, int, int)
      */
     @Override
-    public void setRectangleStrokeColor(Color stroke, int ROIIndex, int shapeIndex) {
+    public void setRectangleStrokeColor(Color stroke, int ROIIndex, int shapeIndex)
+    {
         Rectangle o = getRectangle(ROIIndex, shapeIndex);
         o.setStrokeColor(toRType(stroke));
     }
@@ -6151,7 +6765,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setRectangleStrokeDashArray(String strokeDashArray,
-                                            int ROIIndex, int shapeIndex) {
+                                            int ROIIndex, int shapeIndex)
+    {
         Rectangle o = getRectangle(ROIIndex, shapeIndex);
         o.setStrokeDashArray(toRType(strokeDashArray));
     }
@@ -6161,7 +6776,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setRectangleStrokeWidth(Length strokeWidth, int ROIIndex,
-                                        int shapeIndex) {
+                                        int shapeIndex)
+    {
         Rectangle o = getRectangle(ROIIndex, shapeIndex);
         o.setStrokeWidth(convertLength(strokeWidth));
     }
@@ -6170,7 +6786,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setRectangleTheC(java.lang.Integer, int, int)
      */
     @Override
-    public void setRectangleTheC(NonNegativeInteger theC, int ROIIndex, int shapeIndex) {
+    public void setRectangleTheC(NonNegativeInteger theC, int ROIIndex, int shapeIndex)
+    {
         Rectangle o = getRectangle(ROIIndex, shapeIndex);
         o.setTheC(toRType(theC));
     }
@@ -6179,7 +6796,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setRectangleTheT(java.lang.Integer, int, int)
      */
     @Override
-    public void setRectangleTheT(NonNegativeInteger theT, int ROIIndex, int shapeIndex) {
+    public void setRectangleTheT(NonNegativeInteger theT, int ROIIndex, int shapeIndex)
+    {
         Rectangle o = getRectangle(ROIIndex, shapeIndex);
         o.setTheT(toRType(theT));
     }
@@ -6188,7 +6806,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setRectangleTheZ(java.lang.Integer, int, int)
      */
     @Override
-    public void setRectangleTheZ(NonNegativeInteger theZ, int ROIIndex, int shapeIndex) {
+    public void setRectangleTheZ(NonNegativeInteger theZ, int ROIIndex, int shapeIndex)
+    {
         Rectangle o = getRectangle(ROIIndex, shapeIndex);
         o.setTheZ(toRType(theZ));
     }
@@ -6198,7 +6817,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setRectangleTransform(AffineTransform transform, int ROIIndex,
-                                      int shapeIndex) {
+                                      int shapeIndex)
+    {
         Rectangle o = getRectangle(ROIIndex, shapeIndex);
         o.setTransform(toRType(transform));
     }
@@ -6207,7 +6827,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setRectangleWidth(java.lang.Double, int, int)
      */
     @Override
-    public void setRectangleWidth(Double width, int ROIIndex, int shapeIndex) {
+    public void setRectangleWidth(Double width, int ROIIndex, int shapeIndex)
+    {
         Rectangle o = getRectangle(ROIIndex, shapeIndex);
         o.setWidth(toRType(width));
     }
@@ -6216,7 +6837,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setRectangleX(java.lang.Double, int, int)
      */
     @Override
-    public void setRectangleX(Double x, int ROIIndex, int shapeIndex) {
+    public void setRectangleX(Double x, int ROIIndex, int shapeIndex)
+    {
         Rectangle o = getRectangle(ROIIndex, shapeIndex);
         o.setX(toRType(x));
     }
@@ -6225,7 +6847,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setRectangleY(java.lang.Double, int, int)
      */
     @Override
-    public void setRectangleY(Double y, int ROIIndex, int shapeIndex) {
+    public void setRectangleY(Double y, int ROIIndex, int shapeIndex)
+    {
         Rectangle o = getRectangle(ROIIndex, shapeIndex);
         o.setY(toRType(y));
     }
@@ -6234,7 +6857,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setRoot(MetadataRoot)
      */
     @Override
-    public void setRoot(MetadataRoot root) {
+    public void setRoot(MetadataRoot root)
+    {
         ignoreUnneeded("setRoot", root);
     }
 
@@ -6242,11 +6866,11 @@ public class OMEROMetadataStoreClient
 
     /**
      * Retrieve Screen
-     *
      * @param screenIndex the index of the screen
      * @return the screen
      */
-    private Screen getScreen(int screenIndex) {
+    private Screen getScreen(int screenIndex)
+    {
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
         indexes.put(Index.SCREEN_INDEX, screenIndex);
@@ -6257,7 +6881,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setScreenID(java.lang.String, int)
      */
     @Override
-    public void setScreenID(String id, int screenIndex) {
+    public void setScreenID(String id, int screenIndex)
+    {
         checkDuplicateLSID(Screen.class, id);
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
@@ -6272,7 +6897,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setScreenAnnotationRef(String annotation, int screenIndex,
-                                       int annotationRefIndex) {
+                                       int annotationRefIndex)
+    {
         LSID key = new LSID(Screen.class, screenIndex);
         addReference(key, new LSID(annotation));
     }
@@ -6281,7 +6907,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setScreenDescription(java.lang.String, int)
      */
     @Override
-    public void setScreenDescription(String description, int screenIndex) {
+    public void setScreenDescription(String description, int screenIndex)
+    {
         Screen o = getScreen(screenIndex);
         o.setDescription(toRType(description));
     }
@@ -6290,7 +6917,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setScreenName(java.lang.String, int)
      */
     @Override
-    public void setScreenName(String name, int screenIndex) {
+    public void setScreenName(String name, int screenIndex)
+    {
         Screen o = getScreen(screenIndex);
         o.setName(toRType(name));
     }
@@ -6300,7 +6928,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setScreenPlateRef(String plate, int screenIndex,
-                                  int plateRefIndex) {
+                                  int plateRefIndex)
+    {
         screenKey = new LSID(Screen.class, screenIndex);
         addReference(screenKey, new LSID(plate));
     }
@@ -6310,7 +6939,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setScreenProtocolDescription(String protocolDescription,
-                                             int screenIndex) {
+                                             int screenIndex)
+    {
         Screen o = getScreen(screenIndex);
         o.setProtocolDescription(toRType(protocolDescription));
     }
@@ -6320,7 +6950,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setScreenProtocolIdentifier(String protocolIdentifier,
-                                            int screenIndex) {
+                                            int screenIndex)
+    {
         Screen o = getScreen(screenIndex);
         o.setProtocolIdentifier(toRType(protocolIdentifier));
     }
@@ -6330,7 +6961,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setScreenReagentSetDescription(String reagentSetDescription,
-                                               int screenIndex) {
+                                               int screenIndex)
+    {
         Screen o = getScreen(screenIndex);
         o.setReagentSetDescription(toRType(reagentSetDescription));
     }
@@ -6340,7 +6972,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setScreenReagentSetIdentifier(String reagentSetIdentifier,
-                                              int screenIndex) {
+                                              int screenIndex)
+    {
         Screen o = getScreen(screenIndex);
         o.setReagentSetIdentifier(toRType(reagentSetIdentifier));
     }
@@ -6349,7 +6982,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setScreenType(java.lang.String, int)
      */
     @Override
-    public void setScreenType(String type, int screenIndex) {
+    public void setScreenType(String type, int screenIndex)
+    {
         Screen o = getScreen(screenIndex);
         o.setType(toRType(type));
     }
@@ -6358,11 +6992,11 @@ public class OMEROMetadataStoreClient
 
     /**
      * Retrieve StageLabel
-     *
      * @param imageIndex the index of the image
      * @return the image's stage label
      */
-    private StageLabel getStageLabel(int imageIndex) {
+    private StageLabel getStageLabel(int imageIndex)
+    {
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
         indexes.put(Index.IMAGE_INDEX, imageIndex);
@@ -6373,7 +7007,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setStageLabelName(java.lang.String, int)
      */
     @Override
-    public void setStageLabelName(String name, int imageIndex) {
+    public void setStageLabelName(String name, int imageIndex)
+    {
         StageLabel o = getStageLabel(imageIndex);
         o.setName(toRType(name));
     }
@@ -6382,7 +7017,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setStageLabelX(java.lang.Double, int)
      */
     @Override
-    public void setStageLabelX(Length x, int imageIndex) {
+    public void setStageLabelX(Length x, int imageIndex)
+    {
         StageLabel o = getStageLabel(imageIndex);
         o.setPositionX(convertLength(x));
     }
@@ -6391,7 +7027,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setStageLabelY(java.lang.Double, int)
      */
     @Override
-    public void setStageLabelY(Length y, int imageIndex) {
+    public void setStageLabelY(Length y, int imageIndex)
+    {
         StageLabel o = getStageLabel(imageIndex);
         o.setPositionY(convertLength(y));
     }
@@ -6400,7 +7037,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setStageLabelZ(java.lang.Double, int)
      */
     @Override
-    public void setStageLabelZ(Length z, int imageIndex) {
+    public void setStageLabelZ(Length z, int imageIndex)
+    {
         StageLabel o = getStageLabel(imageIndex);
         o.setPositionZ(convertLength(z));
     }
@@ -6409,11 +7047,11 @@ public class OMEROMetadataStoreClient
 
     /**
      * Retrieve CommentAnnotation object
-     *
      * @param commentAnnotationIndex the index of the comment annotation
      * @return the comment annotation
      */
-    private CommentAnnotation getCommentAnnotation(int commentAnnotationIndex) {
+    private CommentAnnotation getCommentAnnotation(int commentAnnotationIndex)
+    {
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
         indexes.put(Index.COMMENT_ANNOTATION_INDEX, commentAnnotationIndex);
@@ -6424,7 +7062,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setCommentAnnotationID(java.lang.String, int)
      */
     @Override
-    public void setCommentAnnotationID(String id, int commentAnnotationIndex) {
+    public void setCommentAnnotationID(String id, int commentAnnotationIndex)
+    {
         checkDuplicateLSID(CommentAnnotation.class, id);
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
@@ -6439,7 +7078,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setCommentAnnotationNamespace(String namespace,
-                                              int commentAnnotationIndex) {
+                                              int commentAnnotationIndex)
+    {
         CommentAnnotation o = getCommentAnnotation(commentAnnotationIndex);
         o.setNs(toRType(namespace));
     }
@@ -6448,7 +7088,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setCommentAnnotationAnnotator(java.lang.String,int)
      */
     @Override
-    public void setCommentAnnotationAnnotator(String value, int index) {
+    public void  setCommentAnnotationAnnotator(String value, int index)
+    {
         ignoreAnnotator("setCommentAnnotationAnnotator", value, index);
     }
 
@@ -6456,7 +7097,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setCommentAnnotationValue(java.lang.String, int)
      */
     @Override
-    public void setCommentAnnotationValue(String value, int commentAnnotationIndex) {
+    public void setCommentAnnotationValue(String value, int commentAnnotationIndex)
+    {
         CommentAnnotation o = getCommentAnnotation(commentAnnotationIndex);
         o.setTextValue(toRType(value));
     }
@@ -6465,12 +7107,12 @@ public class OMEROMetadataStoreClient
 
     /**
      * Retrieve the Label object
-     *
-     * @param ROIIndex   the index of the ROI
+     * @param ROIIndex the index of the ROI
      * @param shapeIndex the index of the shape within the ROI
      * @return the label
      */
-    private Label getLabel(int ROIIndex, int shapeIndex) {
+    private Label getLabel(int ROIIndex, int shapeIndex)
+    {
 
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
@@ -6483,7 +7125,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setLabelID(java.lang.String, int, int)
      */
     @Override
-    public void setLabelID(String id, int ROIIndex, int shapeIndex) {
+    public void setLabelID(String id, int ROIIndex, int shapeIndex)
+    {
         checkDuplicateLSID(Label.class, id);
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
@@ -6498,7 +7141,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setLabelText(java.lang.String, int, int)
      */
     @Override
-    public void setLabelText(String text, int ROIIndex, int shapeIndex) {
+    public void setLabelText(String text, int ROIIndex, int shapeIndex)
+    {
         Label o = getLabel(ROIIndex, shapeIndex);
         o.setTextValue(toRType(text));
     }
@@ -6507,7 +7151,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setLabelFillColor(ome.xml.model.primitives.Color, int, int)
      */
     @Override
-    public void setLabelFillColor(Color fill, int ROIIndex, int shapeIndex) {
+    public void setLabelFillColor(Color fill, int ROIIndex, int shapeIndex)
+    {
         Label o = getLabel(ROIIndex, shapeIndex);
         o.setFillColor(toRType(fill));
     }
@@ -6516,7 +7161,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setLabelFontSize(ome.xml.model.primitives.NonNegativeInteger, int, int)
      */
     @Override
-    public void setLabelFontSize(Length fontSize, int ROIIndex, int shapeIndex) {
+    public void setLabelFontSize(Length fontSize, int ROIIndex, int shapeIndex)
+    {
         Label o = getLabel(ROIIndex, shapeIndex);
         o.setFontSize(convertLength(fontSize));
     }
@@ -6525,7 +7171,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setLabelStrokeColor(ome.xml.model.primitives.Color, int, int)
      */
     @Override
-    public void setLabelStrokeColor(Color stroke, int ROIIndex, int shapeIndex) {
+    public void setLabelStrokeColor(Color stroke, int ROIIndex, int shapeIndex)
+    {
         Label o = getLabel(ROIIndex, shapeIndex);
         o.setStrokeColor(toRType(stroke));
     }
@@ -6535,7 +7182,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setLabelStrokeDashArray(String strokeDashArray, int ROIIndex,
-                                        int shapeIndex) {
+                                        int shapeIndex)
+    {
         Label o = getLabel(ROIIndex, shapeIndex);
         o.setStrokeDashArray(toRType(strokeDashArray));
     }
@@ -6545,16 +7193,18 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setLabelStrokeWidth(Length strokeWidth, int ROIIndex,
-                                    int shapeIndex) {
+                                    int shapeIndex)
+    {
         Label o = getLabel(ROIIndex, shapeIndex);
-        o.setStrokeWidth(convertLength(strokeWidth));
+        o.setStrokeWidth(convertLength (strokeWidth));
     }
 
     /* (non-Javadoc)
      * @see loci.formats.meta.MetadataStore#setLabelTheC(ome.xml.model.primitives.NonNegativeInteger, int, int)
      */
     @Override
-    public void setLabelTheC(NonNegativeInteger theC, int ROIIndex, int shapeIndex) {
+    public void setLabelTheC(NonNegativeInteger theC, int ROIIndex, int shapeIndex)
+    {
         Label o = getLabel(ROIIndex, shapeIndex);
         o.setTheC(toRType(theC));
     }
@@ -6563,7 +7213,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setLabelTheT(ome.xml.model.primitives.NonNegativeInteger, int, int)
      */
     @Override
-    public void setLabelTheT(NonNegativeInteger theT, int ROIIndex, int shapeIndex) {
+    public void setLabelTheT(NonNegativeInteger theT, int ROIIndex, int shapeIndex)
+    {
         Label o = getLabel(ROIIndex, shapeIndex);
         o.setTheT(toRType(theT));
     }
@@ -6572,7 +7223,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setLabelTheZ(ome.xml.model.primitives.NonNegativeInteger, int, int)
      */
     @Override
-    public void setLabelTheZ(NonNegativeInteger theZ, int ROIIndex, int shapeIndex) {
+    public void setLabelTheZ(NonNegativeInteger theZ, int ROIIndex, int shapeIndex)
+    {
         Label o = getLabel(ROIIndex, shapeIndex);
         o.setTheZ(toRType(theZ));
     }
@@ -6581,7 +7233,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setLabelTransform(ome.xml.model.AffineTransform, int, int)
      */
     @Override
-    public void setLabelTransform(AffineTransform transform, int ROIIndex, int shapeIndex) {
+    public void setLabelTransform(AffineTransform transform, int ROIIndex, int shapeIndex)
+    {
         Label o = getLabel(ROIIndex, shapeIndex);
         o.setTransform(toRType(transform));
     }
@@ -6590,7 +7243,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setLabelX(java.lang.Double, int, int)
      */
     @Override
-    public void setLabelX(Double x, int ROIIndex, int shapeIndex) {
+    public void setLabelX(Double x, int ROIIndex, int shapeIndex)
+    {
         Label o = getLabel(ROIIndex, shapeIndex);
         o.setX(toRType(x));
     }
@@ -6599,7 +7253,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setLabelY(java.lang.Double, int, int)
      */
     @Override
-    public void setLabelY(Double y, int ROIIndex, int shapeIndex) {
+    public void setLabelY(Double y, int ROIIndex, int shapeIndex)
+    {
         Label o = getLabel(ROIIndex, shapeIndex);
         o.setY(toRType(y));
     }
@@ -6611,7 +7266,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setTiffDataFirstC(NonNegativeInteger firstC, int imageIndex,
-                                  int tiffDataIndex) {
+                                  int tiffDataIndex)
+    {
         ignoreUnneeded("setTiffDataFirstC", firstC, imageIndex, tiffDataIndex);
     }
 
@@ -6620,7 +7276,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setTiffDataFirstT(NonNegativeInteger firstT, int imageIndex,
-                                  int tiffDataIndex) {
+                                  int tiffDataIndex)
+    {
         ignoreUnneeded("setTiffDataFirstT", firstT, imageIndex, tiffDataIndex);
     }
 
@@ -6629,7 +7286,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setTiffDataFirstZ(NonNegativeInteger firstZ, int imageIndex,
-                                  int tiffDataIndex) {
+                                  int tiffDataIndex)
+    {
         ignoreUnneeded("setTiffDataFirstZ", firstZ, imageIndex, tiffDataIndex);
     }
 
@@ -6637,7 +7295,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setTiffDataIFD(java.lang.Integer, int, int)
      */
     @Override
-    public void setTiffDataIFD(NonNegativeInteger ifd, int imageIndex, int tiffDataIndex) {
+    public void setTiffDataIFD(NonNegativeInteger ifd, int imageIndex, int tiffDataIndex)
+    {
         ignoreUnneeded("setTiffDataIFD", ifd, imageIndex, tiffDataIndex);
     }
 
@@ -6646,7 +7305,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setTiffDataPlaneCount(NonNegativeInteger planeCount, int imageIndex,
-                                      int tiffDataIndex) {
+                                      int tiffDataIndex)
+    {
         ignoreUnneeded("setTiffDataPlaneCount", planeCount, imageIndex, tiffDataIndex);
     }
 
@@ -6654,11 +7314,11 @@ public class OMEROMetadataStoreClient
 
     /**
      * Retrieve TimestampAnnotation
-     *
      * @param timestampAnnotationIndex the index of the timestamp annotation
      * @return the timestamp annotation
      */
-    private TimestampAnnotation getTimestampAnnotation(int timestampAnnotationIndex) {
+    private TimestampAnnotation getTimestampAnnotation(int timestampAnnotationIndex)
+    {
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
         indexes.put(Index.TIMESTAMP_ANNOTATION_INDEX, timestampAnnotationIndex);
@@ -6669,22 +7329,23 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setTimestampAnnotationID(java.lang.String, int)
      */
     @Override
-    public void setTimestampAnnotationID(String id, int timestampAnnotationIndex) {
+    public void setTimestampAnnotationID(String id, int timestampAnnotationIndex)
+    {
         checkDuplicateLSID(TimestampAnnotation.class, id);
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
         indexes.put(Index.TIMESTAMP_ANNOTATION_INDEX, timestampAnnotationIndex);
         IObjectContainer o = getIObjectContainer(TimestampAnnotation.class, indexes);
         o.LSID = id;
-        addAuthoritativeContainer(TimestampAnnotation.class, id, o);
-    }
+        addAuthoritativeContainer(TimestampAnnotation.class, id, o);       }
 
     /* (non-Javadoc)
      * @see loci.formats.meta.MetadataStore#setTimestampAnnotationNamespace(java.lang.String, int)
      */
     @Override
     public void setTimestampAnnotationNamespace(String namespace,
-                                                int timestampAnnotationIndex) {
+                                                int timestampAnnotationIndex)
+    {
         TimestampAnnotation o = getTimestampAnnotation(timestampAnnotationIndex);
         o.setNs(toRType(namespace));
     }
@@ -6694,17 +7355,20 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setTimestampAnnotationValue(Timestamp value,
-                                            int timestampAnnotationIndex) {
+                                            int timestampAnnotationIndex)
+    {
         TimestampAnnotation o = getTimestampAnnotation(timestampAnnotationIndex);
         o.setTimeValue(toRType(value));
     }
 
     //////// TransmittanceRange /////////
 
-    private TransmittanceRange getTransmittanceRange(int instrumentIndex, int filterIndex) {
+    private TransmittanceRange getTransmittanceRange(int instrumentIndex, int filterIndex)
+    {
         Filter filter = getFilter(instrumentIndex, filterIndex);
         TransmittanceRange tm = filter.getTransmittanceRange();
-        if (tm == null) {
+        if (tm == null)
+        {
             tm = new TransmittanceRangeI();
             filter.setTransmittanceRange(tm);
         }
@@ -6716,7 +7380,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setTransmittanceRangeCutIn(Length cutIn, int instrumentIndex,
-                                           int filterIndex) {
+                                           int filterIndex)
+    {
         TransmittanceRange o = getTransmittanceRange(instrumentIndex, filterIndex);
         o.setCutIn(convertLength(cutIn));
     }
@@ -6726,7 +7391,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setTransmittanceRangeCutInTolerance(Length cutInTolerance,
-                                                    int instrumentIndex, int filterIndex) {
+                                                    int instrumentIndex, int filterIndex)
+    {
         TransmittanceRange o = getTransmittanceRange(instrumentIndex, filterIndex);
         o.setCutInTolerance(convertLength(cutInTolerance));
     }
@@ -6736,7 +7402,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setTransmittanceRangeCutOut(Length cutOut,
-                                            int instrumentIndex, int filterIndex) {
+                                            int instrumentIndex, int filterIndex)
+    {
         TransmittanceRange o = getTransmittanceRange(instrumentIndex, filterIndex);
         o.setCutOut(convertLength(cutOut));
     }
@@ -6746,7 +7413,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setTransmittanceRangeCutOutTolerance(Length cutOutTolerance,
-                                                     int instrumentIndex, int filterIndex) {
+                                                     int instrumentIndex, int filterIndex)
+    {
         TransmittanceRange o = getTransmittanceRange(instrumentIndex, filterIndex);
         o.setCutOutTolerance(convertLength(cutOutTolerance));
     }
@@ -6756,7 +7424,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setTransmittanceRangeTransmittance(
-            PercentFraction transmittance, int instrumentIndex, int filterIndex) {
+            PercentFraction transmittance, int instrumentIndex, int filterIndex)
+    {
         TransmittanceRange o = getTransmittanceRange(instrumentIndex, filterIndex);
         o.setTransmittance(toRType(transmittance));
     }
@@ -6767,7 +7436,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setUUID(java.lang.String)
      */
     @Override
-    public void setUUID(String uuid) {
+    public void setUUID(String uuid)
+    {
         ignoreUnneeded("setUUID", uuid);
     }
 
@@ -6776,13 +7446,15 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setUUIDFileName(String fileName, int imageIndex,
-                                int tiffDataIndex) {
+                                int tiffDataIndex)
+    {
         ignoreUnneeded("setUUIDFileName", fileName, imageIndex, tiffDataIndex);
     }
 
     @Override
     public void setUUIDValue(String fileName, int imageIndex,
-                             int tiffDataIndex) {
+                             int tiffDataIndex)
+    {
         ignoreUnneeded("setUUIDValue", fileName, imageIndex, tiffDataIndex);
     }
 
@@ -6790,12 +7462,12 @@ public class OMEROMetadataStoreClient
 
     /**
      * Retrieve Well
-     *
      * @param plateIndex the index of the plate
-     * @param wellIndex  the index of the well within the plate
+     * @param wellIndex the index of the well within the plate
      * @return the well
      */
-    private Well getWell(int plateIndex, int wellIndex) {
+    private Well getWell(int plateIndex, int wellIndex)
+    {
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
         indexes.put(Index.PLATE_INDEX, plateIndex);
@@ -6807,7 +7479,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setWellID(java.lang.String, int, int)
      */
     @Override
-    public void setWellID(String id, int plateIndex, int wellIndex) {
+    public void setWellID(String id, int plateIndex, int wellIndex)
+    {
         checkDuplicateLSID(Well.class, id);
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
@@ -6823,7 +7496,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setWellAnnotationRef(String annotation, int plateIndex,
-                                     int wellIndex, int annotationRefIndex) {
+                                     int wellIndex, int annotationRefIndex)
+    {
         LSID key = new LSID(Well.class, plateIndex, wellIndex);
         addReference(key, new LSID(annotation));
     }
@@ -6832,7 +7506,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setWellColor(ome.xml.model.primitives.Color, int, int)
      */
     @Override
-    public void setWellColor(Color color, int plateIndex, int wellIndex) {
+    public void setWellColor(Color color, int plateIndex, int wellIndex)
+    {
         Well o = getWell(plateIndex, wellIndex);
         o.setRed(toRType(color.getRed()));
         o.setGreen(toRType(color.getGreen()));
@@ -6845,7 +7520,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setWellColumn(NonNegativeInteger column, int plateIndex,
-                              int wellIndex) {
+                              int wellIndex)
+    {
         Well o = getWell(plateIndex, wellIndex);
         o.setColumn(toRType(column));
     }
@@ -6855,7 +7531,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setWellExternalDescription(String externalDescription,
-                                           int plateIndex, int wellIndex) {
+                                           int plateIndex, int wellIndex)
+    {
         Well o = getWell(plateIndex, wellIndex);
         o.setExternalDescription(toRType(externalDescription));
     }
@@ -6865,7 +7542,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setWellExternalIdentifier(String externalIdentifier,
-                                          int plateIndex, int wellIndex) {
+                                          int plateIndex, int wellIndex)
+    {
         Well o = getWell(plateIndex, wellIndex);
         o.setExternalIdentifier(toRType(externalIdentifier));
     }
@@ -6874,7 +7552,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setWellReagentRef(java.lang.String, int, int)
      */
     @Override
-    public void setWellReagentRef(String reagent, int plateIndex, int wellIndex) {
+    public void setWellReagentRef(String reagent, int plateIndex, int wellIndex)
+    {
         LSID key = new LSID(Well.class, plateIndex, wellIndex);
         addReference(key, new LSID(reagent));
     }
@@ -6883,7 +7562,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setWellRow(ome.xml.model.primitives.NonNegativeInteger, int, int)
      */
     @Override
-    public void setWellRow(NonNegativeInteger row, int plateIndex, int wellIndex) {
+    public void setWellRow(NonNegativeInteger row, int plateIndex, int wellIndex)
+    {
         Well o = getWell(plateIndex, wellIndex);
         o.setRow(toRType(row));
     }
@@ -6892,13 +7572,13 @@ public class OMEROMetadataStoreClient
 
     /**
      * Retrieve WellSample
-     *
-     * @param plateIndex      the index of the plate
-     * @param wellIndex       the index of the well within the plate
+     * @param plateIndex the index of the plate
+     * @param wellIndex the index of the well within the plate
      * @param wellSampleIndex the index of the field within the well
      * @return the well sample
      */
-    private WellSample getWellSample(int plateIndex, int wellIndex, int wellSampleIndex) {
+    private WellSample getWellSample(int plateIndex, int wellIndex, int wellSampleIndex)
+    {
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
         indexes.put(Index.PLATE_INDEX, plateIndex);
@@ -6914,7 +7594,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setWellSampleID(String id, int plateIndex, int wellIndex,
-                                int wellSampleIndex) {
+                                int wellSampleIndex)
+    {
         checkDuplicateLSID(WellSample.class, id);
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
@@ -6931,7 +7612,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setWellSampleImageRef(String image, int plateIndex,
-                                      int wellIndex, int wellSampleIndex) {
+                                      int wellIndex, int wellSampleIndex)
+    {
         LSID key = new LSID(WellSample.class, plateIndex, wellIndex, wellSampleIndex);
         addReference(key, new LSID(image));
     }
@@ -6941,7 +7623,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setWellSampleIndex(NonNegativeInteger index, int plateIndex,
-                                   int wellIndex, int wellSampleIndex) {
+                                   int wellIndex, int wellSampleIndex)
+    {
         ignoreMissing("setWellSampleIndex", index, plateIndex, wellIndex,
                 wellSampleIndex);
         // Perhaps "unneeded"?
@@ -6952,7 +7635,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setWellSamplePositionX(Length positionX, int plateIndex,
-                                       int wellIndex, int wellSampleIndex) {
+                                       int wellIndex, int wellSampleIndex)
+    {
         WellSample o = getWellSample(plateIndex, wellIndex, wellSampleIndex);
         o.setPosX(convertLength(positionX));
     }
@@ -6962,7 +7646,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setWellSamplePositionY(Length positionY, int plateIndex,
-                                       int wellIndex, int wellSampleIndex) {
+                                       int wellIndex, int wellSampleIndex)
+    {
         WellSample o = getWellSample(plateIndex, wellIndex, wellSampleIndex);
         o.setPosY(convertLength(positionY));
     }
@@ -6972,8 +7657,10 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setWellSampleTimepoint(Timestamp timepoint, int plateIndex,
-                                       int wellIndex, int wellSampleIndex) {
-        if (timepoint == null) {
+                                       int wellIndex, int wellSampleIndex)
+    {
+        if (timepoint == null)
+        {
             return;
         }
         WellSample o =
@@ -6985,12 +7672,12 @@ public class OMEROMetadataStoreClient
 
     /**
      * Retrieve XMLAnnotation
-     *
      * @param XMLAnnotationIndex the index of the XML annotation
      * @return the XML annotation
      */
 
-    private XmlAnnotation getXMLAnnotation(int XMLAnnotationIndex) {
+    private XmlAnnotation getXMLAnnotation(int XMLAnnotationIndex)
+    {
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
         indexes.put(Index.XML_ANNOTATION_INDEX, XMLAnnotationIndex);
@@ -7001,7 +7688,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setXMLAnnotationID(java.lang.String, int)
      */
     @Override
-    public void setXMLAnnotationID(String id, int XMLAnnotationIndex) {
+    public void setXMLAnnotationID(String id, int XMLAnnotationIndex)
+    {
         checkDuplicateLSID(XmlAnnotation.class, id);
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
@@ -7016,7 +7704,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setXMLAnnotationNamespace(String namespace,
-                                          int XMLAnnotationIndex) {
+                                          int XMLAnnotationIndex)
+    {
         XmlAnnotation o = getXMLAnnotation(XMLAnnotationIndex);
         o.setNs(toRType(namespace));
     }
@@ -7025,7 +7714,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setXMLAnnotationValue(java.lang.String, int)
      */
     @Override
-    public void setXMLAnnotationValue(String value, int XMLAnnotationIndex) {
+    public void setXMLAnnotationValue(String value, int XMLAnnotationIndex)
+    {
         XmlAnnotation o = getXMLAnnotation(XMLAnnotationIndex);
         o.setTextValue(toRType(value));
     }
@@ -7034,7 +7724,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setXMLAnnotationAnnotator(java.lang.String,int)
      */
     @Override
-    public void setXMLAnnotationAnnotator(String value, int index) {
+    public void  setXMLAnnotationAnnotator(String value, int index)
+    {
         ignoreAnnotator("setXMLAnnotationAnnotator", value, index);
     }
 
@@ -7043,7 +7734,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setXMLAnnotationAnnotationRef(String annotation,
-                                              int XMLAnnotationIndex, int annotationRefIndex) {
+                                              int XMLAnnotationIndex, int annotationRefIndex)
+    {
         LSID key = new LSID(XmlAnnotation.class, XMLAnnotationIndex);
         addReference(key, new LSID(annotation));
     }
@@ -7053,7 +7745,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setXMLAnnotationDescription(String description,
-                                            int XMLAnnotationIndex) {
+                                            int XMLAnnotationIndex)
+    {
         XmlAnnotation o = getXMLAnnotation(XMLAnnotationIndex);
         o.setDescription(toRType(description));
     }
@@ -7063,7 +7756,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setBooleanAnnotationAnnotationRef(String annotation,
-                                                  int booleanAnnotationIndex, int annotationRefIndex) {
+                                                  int booleanAnnotationIndex, int annotationRefIndex)
+    {
         LSID key = new LSID(BooleanAnnotation.class, booleanAnnotationIndex);
         addReference(key, new LSID(annotation));
     }
@@ -7073,7 +7767,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setBooleanAnnotationDescription(String description,
-                                                int booleanAnnotationIndex) {
+                                                int booleanAnnotationIndex)
+    {
         BooleanAnnotation o = getBooleanAnnotation(booleanAnnotationIndex);
         o.setDescription(toRType(description));
     }
@@ -7082,7 +7777,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setBooleanAnnotationAnnotator(java.lang.String,int)
      */
     @Override
-    public void setBooleanAnnotationAnnotator(String value, int index) {
+    public void  setBooleanAnnotationAnnotator(String value, int index)
+    {
         ignoreAnnotator("setBooleanAnnotationAnnotator", value, index);
     }
 
@@ -7091,7 +7787,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setCommentAnnotationAnnotationRef(String annotation,
-                                                  int commentAnnotationIndex, int annotationRefIndex) {
+                                                  int commentAnnotationIndex, int annotationRefIndex)
+    {
         LSID key = new LSID(CommentAnnotation.class, commentAnnotationIndex);
         addReference(key, new LSID(annotation));
     }
@@ -7101,7 +7798,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setCommentAnnotationDescription(String description,
-                                                int commentAnnotationIndex) {
+                                                int commentAnnotationIndex)
+    {
         CommentAnnotation o = getCommentAnnotation(commentAnnotationIndex);
         o.setDescription(toRType(description));
     }
@@ -7111,7 +7809,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setDoubleAnnotationAnnotationRef(String annotation,
-                                                 int doubleAnnotationIndex, int annotationRefIndex) {
+                                                 int doubleAnnotationIndex, int annotationRefIndex)
+    {
         LSID key = new LSID(DoubleAnnotation.class, doubleAnnotationIndex);
         addReference(key, new LSID(annotation));
     }
@@ -7121,7 +7820,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setDoubleAnnotationDescription(String description,
-                                               int doubleAnnotationIndex) {
+                                               int doubleAnnotationIndex)
+    {
         DoubleAnnotation o = getDoubleAnnotation(doubleAnnotationIndex);
         o.setDescription(toRType(description));
     }
@@ -7130,7 +7830,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setDoubleAnnotationAnnotator(java.lang.String,int)
      */
     @Override
-    public void setDoubleAnnotationAnnotator(String value, int index) {
+    public void  setDoubleAnnotationAnnotator(String value, int index)
+    {
         ignoreAnnotator("setDoubleAnnotationAnnotator", value, index);
     }
 
@@ -7139,7 +7840,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setFileAnnotationAnnotationRef(String annotation,
-                                               int fileAnnotationIndex, int annotationRefIndex) {
+                                               int fileAnnotationIndex, int annotationRefIndex)
+    {
         LSID key = new LSID(FileAnnotation.class, fileAnnotationIndex);
         addReference(key, new LSID(annotation));
     }
@@ -7149,7 +7851,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setFileAnnotationDescription(String description,
-                                             int fileAnnotationIndex) {
+                                             int fileAnnotationIndex)
+    {
         FileAnnotation o = getFileAnnotation(fileAnnotationIndex);
         o.setDescription(toRType(description));
     }
@@ -7158,7 +7861,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setFileAnnotationAnnotator(java.lang.String,int)
      */
     @Override
-    public void setFileAnnotationAnnotator(String value, int index) {
+    public void  setFileAnnotationAnnotator(String value, int index)
+    {
         ignoreAnnotator("setFileAnnotationAnnotator", value, index);
     }
 
@@ -7167,7 +7871,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setListAnnotationDescription(String description,
-                                             int listAnnotationIndex) {
+                                             int listAnnotationIndex)
+    {
         ListAnnotation o = getListAnnotation(listAnnotationIndex);
         o.setDescription(toRType(description));
     }
@@ -7176,7 +7881,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setListAnnotationAnnotator(java.lang.String,int)
      */
     @Override
-    public void setListAnnotationAnnotator(String value, int index) {
+    public void  setListAnnotationAnnotator(String value, int index)
+    {
         ignoreAnnotator("setListAnnotationAnnotator", value, index);
     }
 
@@ -7186,7 +7892,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setLongAnnotationAnnotationRef(String annotation,
-                                               int longAnnotationIndex, int annotationRefIndex) {
+                                               int longAnnotationIndex, int annotationRefIndex)
+    {
         LSID key = new LSID(LongAnnotation.class, longAnnotationIndex);
         addReference(key, new LSID(annotation));
     }
@@ -7196,7 +7903,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setLongAnnotationDescription(String description,
-                                             int longAnnotationIndex) {
+                                             int longAnnotationIndex)
+    {
         LongAnnotation o = getLongAnnotation(longAnnotationIndex);
         o.setDescription(toRType(description));
     }
@@ -7205,11 +7913,13 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setLongAnnotationAnnotator(java.lang.String,int)
      */
     @Override
-    public void setLongAnnotationAnnotator(String value, int XMLAnnotationIndex) {
+    public void  setLongAnnotationAnnotator(String value, int XMLAnnotationIndex)
+    {
         ignoreAnnotator("setLongAnnotationAnnotator", value, XMLAnnotationIndex);
     }
 
-    private MapAnnotation getMapAnnotation(int mapAnnotationIndex) {
+    private MapAnnotation getMapAnnotation(int mapAnnotationIndex)
+    {
         final LinkedHashMap<Index, Integer> indexes = new LinkedHashMap<Index, Integer>(1);
         indexes.put(Index.MAP_ANNOTATION_INDEX, mapAnnotationIndex);
         return getSourceObject(MapAnnotation.class, indexes);
@@ -7256,11 +7966,11 @@ public class OMEROMetadataStoreClient
 
     /**
      * Retrieve TagAnnotation object
-     *
      * @param tagAnnotationIndex the index of the tag annotation
      * @return the tag annotation
      */
-    private TagAnnotation getTagAnnotation(int tagAnnotationIndex) {
+    private TagAnnotation getTagAnnotation(int tagAnnotationIndex)
+    {
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
         indexes.put(Index.TAG_ANNOTATION_INDEX, tagAnnotationIndex);
@@ -7272,7 +7982,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setTagAnnotationAnnotationRef(String annotation,
-                                              int tagAnnotationIndex, int annotationRefIndex) {
+                                              int tagAnnotationIndex, int annotationRefIndex)
+    {
         LSID key = new LSID(TagAnnotation.class, tagAnnotationIndex);
         addReference(key, new LSID(annotation));
     }
@@ -7282,7 +7993,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setTagAnnotationDescription(String description,
-                                            int tagAnnotationIndex) {
+                                            int tagAnnotationIndex)
+    {
         TagAnnotation o = getTagAnnotation(tagAnnotationIndex);
         o.setDescription(toRType(description));
     }
@@ -7291,7 +8003,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setTagAnnotationID(java.lang.String, int)
      */
     @Override
-    public void setTagAnnotationID(String id, int tagAnnotationIndex) {
+    public void setTagAnnotationID(String id, int tagAnnotationIndex)
+    {
         checkDuplicateLSID(TagAnnotation.class, id);
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
@@ -7306,7 +8019,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setTagAnnotationNamespace(String namespace,
-                                          int tagAnnotationIndex) {
+                                          int tagAnnotationIndex)
+    {
         TagAnnotation o = getTagAnnotation(tagAnnotationIndex);
         o.setNs(toRType(namespace));
     }
@@ -7315,7 +8029,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setTagAnnotationAnnotator(java.lang.String,int)
      */
     @Override
-    public void setTagAnnotationAnnotator(String value, int index) {
+    public void  setTagAnnotationAnnotator(String value, int index)
+    {
         ignoreAnnotator("setTagAnnotationAnnotator", value, index);
     }
 
@@ -7323,18 +8038,19 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setTagAnnotationValue(java.lang.String, int)
      */
     @Override
-    public void setTagAnnotationValue(String value, int tagAnnotationIndex) {
+    public void setTagAnnotationValue(String value, int tagAnnotationIndex)
+    {
         TagAnnotation o = getTagAnnotation(tagAnnotationIndex);
         o.setTextValue(toRType(value));
     }
 
     /**
      * Retrieve TermAnnotation object
-     *
      * @param termAnnotationIndex the index of the term annotation
      * @return the term annotation
      */
-    private TermAnnotation getTermAnnotation(int termAnnotationIndex) {
+    private TermAnnotation getTermAnnotation(int termAnnotationIndex)
+    {
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
         indexes.put(Index.TERM_ANNOTATION_INDEX, termAnnotationIndex);
@@ -7346,7 +8062,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setTermAnnotationAnnotationRef(String annotation,
-                                               int termAnnotationIndex, int annotationRefIndex) {
+                                               int termAnnotationIndex, int annotationRefIndex)
+    {
         LSID key = new LSID(TermAnnotation.class, termAnnotationIndex);
         addReference(key, new LSID(annotation));
     }
@@ -7356,7 +8073,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setTermAnnotationDescription(String description,
-                                             int termAnnotationIndex) {
+                                             int termAnnotationIndex)
+    {
         TermAnnotation o = getTermAnnotation(termAnnotationIndex);
         o.setDescription(toRType(description));
     }
@@ -7365,7 +8083,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setTermAnnotationID(java.lang.String, int)
      */
     @Override
-    public void setTermAnnotationID(String id, int termAnnotationIndex) {
+    public void setTermAnnotationID(String id, int termAnnotationIndex)
+    {
         checkDuplicateLSID(TermAnnotation.class, id);
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
@@ -7380,7 +8099,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setTermAnnotationNamespace(String namespace,
-                                           int termAnnotationIndex) {
+                                           int termAnnotationIndex)
+    {
         TermAnnotation o = getTermAnnotation(termAnnotationIndex);
         o.setNs(toRType(namespace));
     }
@@ -7389,7 +8109,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setTermAnnotationAnnotator(java.lang.String,int)
      */
     @Override
-    public void setTermAnnotationAnnotator(String value, int index) {
+    public void  setTermAnnotationAnnotator(String value, int index)
+    {
         ignoreAnnotator("setTermAnnotationAnnotator", value, index);
     }
 
@@ -7397,7 +8118,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setTermAnnotationValue(java.lang.String, int)
      */
     @Override
-    public void setTermAnnotationValue(String value, int termAnnotationIndex) {
+    public void setTermAnnotationValue(String value, int termAnnotationIndex)
+    {
         TermAnnotation o = getTermAnnotation(termAnnotationIndex);
         o.setTermValue(toRType(value));
     }
@@ -7407,7 +8129,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setTimestampAnnotationAnnotationRef(String annotation,
-                                                    int timestampAnnotationIndex, int annotationRefIndex) {
+                                                    int timestampAnnotationIndex, int annotationRefIndex)
+    {
         LSID key = new LSID(TimestampAnnotation.class, timestampAnnotationIndex);
         addReference(key, new LSID(annotation));
     }
@@ -7417,7 +8140,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setTimestampAnnotationDescription(String description,
-                                                  int timestampAnnotationIndex) {
+                                                  int timestampAnnotationIndex)
+    {
         TimestampAnnotation o = getTimestampAnnotation(timestampAnnotationIndex);
         o.setDescription(toRType(description));
     }
@@ -7426,7 +8150,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setTimestampAnnotationAnnotator(java.lang.String,int)
      */
     @Override
-    public void setTimestampAnnotationAnnotator(String value, int index) {
+    public void  setTimestampAnnotationAnnotator(String value, int index)
+    {
         ignoreAnnotator("setTimestampAnnotationAnnotator", value, index);
     }
 
@@ -7438,7 +8163,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPlateFieldIndex(ome.xml.model.primitives.NonNegativeInteger, int)
      */
     @Override
-    public void setPlateFieldIndex(NonNegativeInteger fieldIndex, int plateIndex) {
+    public void setPlateFieldIndex(NonNegativeInteger fieldIndex, int plateIndex)
+    {
         ignoreMissing("setPlateFieldIndex", fieldIndex, plateIndex);
     }
 
@@ -7466,7 +8192,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setBinaryFileFileName(java.lang.String, int)
      */
     @Override
-    public void setBinaryFileFileName(String fileName, int fileAnnotationIndex) {
+    public void setBinaryFileFileName(String fileName, int fileAnnotationIndex)
+    {
         ignoreUnneeded("setBinaryFileFileName", fileName,
                 fileAnnotationIndex);
     }
@@ -7475,7 +8202,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setBinaryFileMIMEType(java.lang.String, int)
      */
     @Override
-    public void setBinaryFileMIMEType(String mimeType, int fileAnnotationIndex) {
+    public void setBinaryFileMIMEType(String mimeType, int fileAnnotationIndex)
+    {
         ignoreUnneeded("setBinaryFileMIMEType", mimeType, fileAnnotationIndex);
     }
 
@@ -7483,7 +8211,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setBinaryFileSize(ome.xml.model.primitives.NonNegativeLong, int)
      */
     @Override
-    public void setBinaryFileSize(NonNegativeLong size, int fileAnnotationIndex) {
+    public void setBinaryFileSize(NonNegativeLong size, int fileAnnotationIndex)
+    {
         ignoreUnneeded("setBinaryFileSize", size, fileAnnotationIndex);
     }
 
@@ -7492,7 +8221,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setDatasetImageRef(String image, int datasetIndex,
-                                   int imageRefIndex) {
+                                   int imageRefIndex)
+    {
         ignoreUnsupported("setDatasetImageRef", image, datasetIndex, imageRefIndex);
     }
 
@@ -7501,7 +8231,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setEllipseFillRule(FillRule fillRule, int ROIIndex,
-                                   int shapeIndex) {
+                                   int shapeIndex)
+    {
         Ellipse o = getEllipse(ROIIndex, shapeIndex);
         o.setFillRule(toRType(fillRule.getValue()));
     }
@@ -7511,7 +8242,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setEllipseFontFamily(FontFamily fontFamily, int ROIIndex,
-                                     int shapeIndex) {
+                                     int shapeIndex)
+    {
         Ellipse o = getEllipse(ROIIndex, shapeIndex);
         o.setFontFamily(toRType(fontFamily.getValue()));
     }
@@ -7521,7 +8253,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setEllipseFontStyle(FontStyle fontStyle, int ROIIndex,
-                                    int shapeIndex) {
+                                    int shapeIndex)
+    {
         Ellipse o = getEllipse(ROIIndex, shapeIndex);
         o.setFontFamily(toRType(fontStyle.getValue()));
     }
@@ -7530,7 +8263,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setEllipseLocked(java.lang.Boolean, int, int)
      */
     @Override
-    public void setEllipseLocked(Boolean locked, int ROIIndex, int shapeIndex) {
+    public void setEllipseLocked(Boolean locked, int ROIIndex, int shapeIndex)
+    {
         Ellipse o = getEllipse(ROIIndex, shapeIndex);
         o.setLocked(toRType(locked));
     }
@@ -7540,7 +8274,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setExperimenterGroupAnnotationRef(String annotation,
-                                                  int experimenterGroupIndex, int annotationRefIndex) {
+                                                  int experimenterGroupIndex, int annotationRefIndex)
+    {
         ignoreInsecure("setExperimenterGroupAnnotationRef", annotation,
                 experimenterGroupIndex, annotationRefIndex);
     }
@@ -7550,7 +8285,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setExperimenterGroupExperimenterRef(String experimenter,
-                                                    int experimenterGroupIndex, int experimenterRefIndex) {
+                                                    int experimenterGroupIndex, int experimenterRefIndex)
+    {
         ignoreInsecure("setExperimenterGroupExperimenterRef", experimenter,
                 experimenterGroupIndex, experimenterRefIndex);
     }
@@ -7559,7 +8295,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setLabelFillRule(ome.xml.model.enums.FillRule, int, int)
      */
     @Override
-    public void setLabelFillRule(FillRule fillRule, int ROIIndex, int shapeIndex) {
+    public void setLabelFillRule(FillRule fillRule, int ROIIndex, int shapeIndex)
+    {
         Label o = getLabel(ROIIndex, shapeIndex);
         o.setFillRule(toRType(fillRule.getValue()));
     }
@@ -7569,7 +8306,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setLabelFontFamily(FontFamily fontFamily, int ROIIndex,
-                                   int shapeIndex) {
+                                   int shapeIndex)
+    {
         Label o = getLabel(ROIIndex, shapeIndex);
         o.setFontFamily(toRType(fontFamily.getValue()));
     }
@@ -7579,7 +8317,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setLabelFontStyle(FontStyle fontStyle, int ROIIndex,
-                                  int shapeIndex) {
+                                  int shapeIndex)
+    {
         Label o = getLabel(ROIIndex, shapeIndex);
         o.setFontStyle(toRType(fontStyle.getValue()));
     }
@@ -7588,7 +8327,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setLabelLocked(java.lang.Boolean, int, int)
      */
     @Override
-    public void setLabelLocked(Boolean locked, int ROIIndex, int shapeIndex) {
+    public void setLabelLocked(Boolean locked, int ROIIndex, int shapeIndex)
+    {
         Label o = getLabel(ROIIndex, shapeIndex);
         o.setLocked(toRType(locked));
     }
@@ -7597,7 +8337,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setLineFillRule(ome.xml.model.enums.FillRule, int, int)
      */
     @Override
-    public void setLineFillRule(FillRule fillRule, int ROIIndex, int shapeIndex) {
+    public void setLineFillRule(FillRule fillRule, int ROIIndex, int shapeIndex)
+    {
         Line o = getLine(ROIIndex, shapeIndex);
         o.setFillRule(toRType(fillRule.getValue()));
     }
@@ -7607,7 +8348,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setLineFontFamily(FontFamily fontFamily, int ROIIndex,
-                                  int shapeIndex) {
+                                  int shapeIndex)
+    {
         Line o = getLine(ROIIndex, shapeIndex);
         o.setFontFamily(toRType(fontFamily.getValue()));
     }
@@ -7617,7 +8359,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setLineFontStyle(FontStyle fontStyle, int ROIIndex,
-                                 int shapeIndex) {
+                                 int shapeIndex)
+    {
         Line o = getLine(ROIIndex, shapeIndex);
         o.setFontFamily(toRType(fontStyle.getValue()));
     }
@@ -7626,7 +8369,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setLineLocked(java.lang.Boolean, int, int)
      */
     @Override
-    public void setLineLocked(Boolean locked, int ROIIndex, int shapeIndex) {
+    public void setLineLocked(Boolean locked, int ROIIndex, int shapeIndex)
+    {
         Line o = getLine(ROIIndex, shapeIndex);
         o.setLocked(toRType(locked));
     }
@@ -7635,7 +8379,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setLineMarkerEnd(ome.xml.model.enums.Marker, int, int)
      */
     @Override
-    public void setLineMarkerEnd(Marker markerEnd, int ROIIndex, int shapeIndex) {
+    public void setLineMarkerEnd(Marker markerEnd, int ROIIndex, int shapeIndex)
+    {
         final Line line = getLine(ROIIndex, shapeIndex);
         line.setMarkerEnd(toRType(markerEnd.getValue()));
     }
@@ -7645,7 +8390,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setLineMarkerStart(Marker markerStart, int ROIIndex,
-                                   int shapeIndex) {
+                                   int shapeIndex)
+    {
         final Line line = getLine(ROIIndex, shapeIndex);
         line.setMarkerStart(toRType(markerStart.getValue()));
     }
@@ -7654,7 +8400,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setMaskFillRule(ome.xml.model.enums.FillRule, int, int)
      */
     @Override
-    public void setMaskFillRule(FillRule fillRule, int ROIIndex, int shapeIndex) {
+    public void setMaskFillRule(FillRule fillRule, int ROIIndex, int shapeIndex)
+    {
         Mask o = getMask(ROIIndex, shapeIndex);
         o.setFillRule(toRType(fillRule.getValue()));
     }
@@ -7664,7 +8411,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setMaskFontFamily(FontFamily fontFamily, int ROIIndex,
-                                  int shapeIndex) {
+                                  int shapeIndex)
+    {
         Mask o = getMask(ROIIndex, shapeIndex);
         o.setFontFamily(toRType(fontFamily.getValue()));
     }
@@ -7674,7 +8422,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setMaskFontStyle(FontStyle fontStyle, int ROIIndex,
-                                 int shapeIndex) {
+                                 int shapeIndex)
+    {
         Mask o = getMask(ROIIndex, shapeIndex);
         o.setFontStyle(toRType(fontStyle.getValue()));
     }
@@ -7683,7 +8432,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setMaskLocked(java.lang.Boolean, int, int)
      */
     @Override
-    public void setMaskLocked(Boolean locked, int ROIIndex, int shapeIndex) {
+    public void setMaskLocked(Boolean locked, int ROIIndex, int shapeIndex)
+    {
         Mask o = getMask(ROIIndex, shapeIndex);
         o.setLocked(toRType(locked));
     }
@@ -7692,7 +8442,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPointFillRule(ome.xml.model.enums.FillRule, int, int)
      */
     @Override
-    public void setPointFillRule(FillRule fillRule, int ROIIndex, int shapeIndex) {
+    public void setPointFillRule(FillRule fillRule, int ROIIndex, int shapeIndex)
+    {
         Point o = getPoint(ROIIndex, shapeIndex);
         o.setFillRule(toRType(fillRule.getValue()));
     }
@@ -7702,7 +8453,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setPointFontFamily(FontFamily fontFamily, int ROIIndex,
-                                   int shapeIndex) {
+                                   int shapeIndex)
+    {
         Point o = getPoint(ROIIndex, shapeIndex);
         o.setFontFamily(toRType(fontFamily.getValue()));
     }
@@ -7712,7 +8464,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setPointFontStyle(FontStyle fontStyle, int ROIIndex,
-                                  int shapeIndex) {
+                                  int shapeIndex)
+    {
         Point o = getPoint(ROIIndex, shapeIndex);
         o.setFontStyle(toRType(fontStyle.getValue()));
     }
@@ -7721,14 +8474,16 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPointLocked(java.lang.Boolean, int, int)
      */
     @Override
-    public void setPointLocked(Boolean locked, int ROIIndex, int shapeIndex) {
+    public void setPointLocked(Boolean locked, int ROIIndex, int shapeIndex)
+    {
         Point o = getPoint(ROIIndex, shapeIndex);
         o.setLocked(toRType(locked));
     }
 
     //////// Polygon /////////
 
-    private Polygon getPolygon(int ROIIndex, int shapeIndex) {
+    private Polygon getPolygon(int ROIIndex, int shapeIndex)
+    {
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
         indexes.put(Index.ROI_INDEX, ROIIndex);
@@ -7741,7 +8496,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setPolygonFillColor(Color fillColor, int ROIIndex,
-                                    int shapeIndex) {
+                                    int shapeIndex)
+    {
         Polygon o = getPolygon(ROIIndex, shapeIndex);
         o.setFillColor(toRType(fillColor));
     }
@@ -7751,7 +8507,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setPolygonFillRule(FillRule fillRule, int ROIIndex,
-                                   int shapeIndex) {
+                                   int shapeIndex)
+    {
         Polygon o = getPolygon(ROIIndex, shapeIndex);
         o.setFillRule(toRType(fillRule.getValue()));
     }
@@ -7761,7 +8518,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setPolygonFontFamily(FontFamily fontFamily, int ROIIndex,
-                                     int shapeIndex) {
+                                     int shapeIndex)
+    {
         Polygon o = getPolygon(ROIIndex, shapeIndex);
         o.setFontFamily(toRType(fontFamily.getValue()));
     }
@@ -7771,7 +8529,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setPolygonFontSize(Length fontSize, int ROIIndex,
-                                   int shapeIndex) {
+                                   int shapeIndex)
+    {
         Polygon o = getPolygon(ROIIndex, shapeIndex);
         o.setFontSize(convertLength(fontSize));
     }
@@ -7781,7 +8540,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setPolygonFontStyle(FontStyle fontStyle, int ROIIndex,
-                                    int shapeIndex) {
+                                    int shapeIndex)
+    {
         Polygon o = getPolygon(ROIIndex, shapeIndex);
         o.setFontStyle(toRType(fontStyle.getValue()));
     }
@@ -7790,7 +8550,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPolygonID(java.lang.String, int, int)
      */
     @Override
-    public void setPolygonID(String id, int ROIIndex, int shapeIndex) {
+    public void setPolygonID(String id, int ROIIndex, int shapeIndex)
+    {
         checkDuplicateLSID(Polygon.class, id);
         LinkedHashMap<Index, Integer> indexes =
                 new LinkedHashMap<Index, Integer>();
@@ -7805,7 +8566,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPolygonLocked(java.lang.Boolean, int, int)
      */
     @Override
-    public void setPolygonLocked(Boolean locked, int ROIIndex, int shapeIndex) {
+    public void setPolygonLocked(Boolean locked, int ROIIndex, int shapeIndex)
+    {
         Polygon o = getPolygon(ROIIndex, shapeIndex);
         o.setLocked(toRType(locked));
     }
@@ -7815,7 +8577,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setPolygonStrokeColor(Color strokeColor, int ROIIndex,
-                                      int shapeIndex) {
+                                      int shapeIndex)
+    {
         Polygon o = getPolygon(ROIIndex, shapeIndex);
         o.setStrokeColor(toRType(strokeColor));
     }
@@ -7825,7 +8588,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setPolygonStrokeDashArray(String strokeDashArray, int ROIIndex,
-                                          int shapeIndex) {
+                                          int shapeIndex)
+    {
         Polygon o = getPolygon(ROIIndex, shapeIndex);
         o.setStrokeDashArray(toRType(strokeDashArray));
     }
@@ -7835,7 +8599,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setPolygonStrokeWidth(Length strokeWidth, int ROIIndex,
-                                      int shapeIndex) {
+                                      int shapeIndex)
+    {
         Polygon o = getPolygon(ROIIndex, shapeIndex);
         o.setStrokeWidth(convertLength(strokeWidth));
     }
@@ -7844,7 +8609,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPolygonText(java.lang.String, int, int)
      */
     @Override
-    public void setPolygonText(String text, int ROIIndex, int shapeIndex) {
+    public void setPolygonText(String text, int ROIIndex, int shapeIndex)
+    {
         Polygon o = getPolygon(ROIIndex, shapeIndex);
         o.setTextValue(toRType(text));
     }
@@ -7854,7 +8620,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setPolygonTheC(NonNegativeInteger theC, int ROIIndex,
-                               int shapeIndex) {
+                               int shapeIndex)
+    {
         Polygon o = getPolygon(ROIIndex, shapeIndex);
         o.setTheC(toRType(theC));
     }
@@ -7864,7 +8631,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setPolygonTheT(NonNegativeInteger theT, int ROIIndex,
-                               int shapeIndex) {
+                               int shapeIndex)
+    {
         Polygon o = getPolygon(ROIIndex, shapeIndex);
         o.setTheT(toRType(theT.getValue()));
     }
@@ -7874,7 +8642,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setPolygonTheZ(NonNegativeInteger theZ, int ROIIndex,
-                               int shapeIndex) {
+                               int shapeIndex)
+    {
         Polygon o = getPolygon(ROIIndex, shapeIndex);
         o.setTheZ(toRType(theZ.getValue()));
     }
@@ -7884,7 +8653,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setPolygonTransform(AffineTransform transform, int ROIIndex,
-                                    int shapeIndex) {
+                                    int shapeIndex)
+    {
         Polygon o = getPolygon(ROIIndex, shapeIndex);
         o.setTransform(toRType(transform));
     }
@@ -7893,7 +8663,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPolygonPoints(java.lang.String, int, int)
      */
     @Override
-    public void setPolygonPoints(String points, int ROIIndex, int shapeIndex) {
+    public void setPolygonPoints(String points, int ROIIndex, int shapeIndex)
+    {
         Polygon o = getPolygon(ROIIndex, shapeIndex);
         o.setPoints(toRType(points));
     }
@@ -7903,7 +8674,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setPolylineFillRule(FillRule fillRule, int ROIIndex,
-                                    int shapeIndex) {
+                                    int shapeIndex)
+    {
         Polyline o = getPolyline(ROIIndex, shapeIndex);
         o.setFillRule(toRType(fillRule.getValue()));
     }
@@ -7913,7 +8685,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setPolylineFontFamily(FontFamily fontFamily, int ROIIndex,
-                                      int shapeIndex) {
+                                      int shapeIndex)
+    {
         Polyline o = getPolyline(ROIIndex, shapeIndex);
         o.setFontFamily(toRType(fontFamily.getValue()));
     }
@@ -7923,7 +8696,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setPolylineFontStyle(FontStyle fontStyle, int ROIIndex,
-                                     int shapeIndex) {
+                                     int shapeIndex)
+    {
         Polyline o = getPolyline(ROIIndex, shapeIndex);
         o.setFontStyle(toRType(fontStyle.getValue()));
     }
@@ -7932,7 +8706,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setPolylineLocked(java.lang.Boolean, int, int)
      */
     @Override
-    public void setPolylineLocked(Boolean locked, int ROIIndex, int shapeIndex) {
+    public void setPolylineLocked(Boolean locked, int ROIIndex, int shapeIndex)
+    {
         Polyline o = getPolyline(ROIIndex, shapeIndex);
         o.setLocked(toRType(locked));
     }
@@ -7942,7 +8717,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setPolylineMarkerEnd(Marker markerEnd, int ROIIndex,
-                                     int shapeIndex) {
+                                     int shapeIndex)
+    {
         final Polyline polyline = getPolyline(ROIIndex, shapeIndex);
         polyline.setMarkerEnd(toRType(markerEnd.getValue()));
     }
@@ -7952,7 +8728,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setPolylineMarkerStart(Marker markerStart, int ROIIndex,
-                                       int shapeIndex) {
+                                       int shapeIndex)
+    {
         final Polyline polyline = getPolyline(ROIIndex, shapeIndex);
         polyline.setMarkerStart(toRType(markerStart.getValue()));
     }
@@ -7962,7 +8739,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setProjectDatasetRef(String dataset, int projectIndex,
-                                     int datasetRefIndex) {
+                                     int datasetRefIndex)
+    {
         ignoreUnsupported("setProjectDatasetRef", dataset, projectIndex,
                 datasetRefIndex);
     }
@@ -7972,7 +8750,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setRectangleFillRule(FillRule fillRule, int ROIIndex,
-                                     int shapeIndex) {
+                                     int shapeIndex)
+    {
         Rectangle o = getRectangle(ROIIndex, shapeIndex);
         o.setFillRule(toRType(fillRule.getValue()));
     }
@@ -7982,7 +8761,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setRectangleFontFamily(FontFamily fontFamily, int ROIIndex,
-                                       int shapeIndex) {
+                                       int shapeIndex)
+    {
         Rectangle o = getRectangle(ROIIndex, shapeIndex);
         o.setFontFamily(toRType(fontFamily.getValue()));
     }
@@ -7992,7 +8772,8 @@ public class OMEROMetadataStoreClient
      */
     @Override
     public void setRectangleFontStyle(FontStyle fontStyle, int ROIIndex,
-                                      int shapeIndex) {
+                                      int shapeIndex)
+    {
         Rectangle o = getRectangle(ROIIndex, shapeIndex);
         o.setFontStyle(toRType(fontStyle.getValue()));
     }
@@ -8001,7 +8782,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setRectangleLocked(java.lang.Boolean, int, int)
      */
     @Override
-    public void setRectangleLocked(Boolean locked, int ROIIndex, int shapeIndex) {
+    public void setRectangleLocked(Boolean locked, int ROIIndex, int shapeIndex)
+    {
         Rectangle o = getRectangle(ROIIndex, shapeIndex);
         o.setLocked(toRType(locked));
     }
@@ -8010,7 +8792,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setWellType(java.lang.String, int, int)
      */
     @Override
-    public void setWellType(String type, int plateIndex, int wellIndex) {
+    public void setWellType(String type, int plateIndex, int wellIndex)
+    {
         Well o = getWell(plateIndex, wellIndex);
         o.setType(toRType(type));
     }
@@ -8019,7 +8802,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setRightsRightsHeld(java.lang.String)
      */
     @Override
-    public void setRightsRightsHeld(String value) {
+    public void  setRightsRightsHeld(String value)
+    {
         ignoreMissing("setRightsRightsHeld", value);
     }
 
@@ -8027,7 +8811,8 @@ public class OMEROMetadataStoreClient
      * @see loci.formats.meta.MetadataStore#setRightsRightsHolder(java.lang.String)
      */
     @Override
-    public void setRightsRightsHolder(String value) {
+    public void  setRightsRightsHolder(String value)
+    {
         ignoreMissing("setRightsRightsHolder", value);
         // TODO: Now with FS, shouldn't we attach to this file/fileset?
     }
@@ -8199,7 +8984,7 @@ public class OMEROMetadataStoreClient
     // LOGGING OF UNIMPLEMENTED METHODS
     //
 
-    private String ignoreMessage(String reason, String method, Object... args) {
+    private String ignoreMessage(String reason, String method, Object...args) {
         StringBuilder sb = new StringBuilder();
         sb.append(reason);
         sb.append("Ignoring ");
@@ -8221,7 +9006,7 @@ public class OMEROMetadataStoreClient
     /**
      * Called when a property is missing from the OMERO model (WARN).
      */
-    protected void ignoreMissing(String method, Object... args) {
+    protected void ignoreMissing(String method, Object...args) {
         String msg = ignoreMessage("Unneeded in OMERO. ", method, args);
         log.warn(msg, args);
     }
@@ -8230,7 +9015,7 @@ public class OMEROMetadataStoreClient
      * Called when a property is not needed in OMERO since the data can
      * be gotten elsewhere, as in directly from the file itself (DEBUG).
      */
-    protected void ignoreUnneeded(String method, Object... args) {
+    protected void ignoreUnneeded(String method, Object...args) {
         String msg = ignoreMessage("Unneeded in OMERO. ", method, args);
         log.debug(msg, args);
     }
@@ -8240,7 +9025,7 @@ public class OMEROMetadataStoreClient
      * log.warn is used to signal to the user that something is being missed
      * (WARN).
      */
-    protected void ignoreUnsupported(String method, Object... args) {
+    protected void ignoreUnsupported(String method, Object...args) {
         String msg = ignoreMessage("Unsupported in OMERO. ", method, args);
         log.warn(msg, args);
     }
@@ -8250,7 +9035,7 @@ public class OMEROMetadataStoreClient
      * (DEBUG). These are logged at debug since there's nothing the user need
      * worry about.
      */
-    protected void ignoreInsecure(String method, Object... args) {
+    protected void ignoreInsecure(String method, Object...args) {
         String msg = ignoreMessage("Disallowed in OMERO. ", method, args);
         log.debug(msg, args);
     }
@@ -8258,7 +9043,7 @@ public class OMEROMetadataStoreClient
     /**
      * For all cases of an annotator being ignore (WARN).
      */
-    protected void ignoreAnnotator(String method, Object... args) {
+    protected void ignoreAnnotator(String method, Object...args) {
         String msg = ignoreMessage("No annotators linked. ", method, args);
         log.warn(msg, args);
     }
