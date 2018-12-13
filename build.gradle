@@ -12,14 +12,14 @@ buildscript {
 plugins {
     id "java"
     id 'maven-publish'
-    id 'org.openmicroscopy.dsl' version '0.1.0'
-    id 'org.openmicroscopy.blitz' version '0.1.0'
+    id 'org.openmicroscopy.dsl' version '5.5.0-SNAPSHOT'
+    id 'org.openmicroscopy.blitz' version '5.5.0-SNAPSHOT'
 }
 
 apply plugin: "com.zeroc.gradle.ice-builder.slice"
 
-group = 'openmicroscopy.com'
-version = '1.0-SNAPSHOT'
+group = 'org.openmicroscopy'
+version = '5.5.0-SNAPSHOT'
 sourceCompatibility = 1.8
 
 repositories {
@@ -30,7 +30,7 @@ repositories {
 
 dependencies {
     testCompile group: 'junit', name: 'junit', version: '4.12'
-    compile 'org.openmicroscopy:omero-server:1.0-SNAPSHOT'
+    compile 'org.openmicroscopy:omero-server:5.5.0-SNAPSHOT'
 }
 
 sourceSets {
