@@ -33,11 +33,16 @@ dependencies {
     testCompile group: 'junit', name: 'junit', version: '4.12'
     compile 'org.openmicroscopy:omero-server:5.5.0-SNAPSHOT'
 
+    implementation 'com.sun.activation:javax.activation:1.2.0'
+
     implementation 'commons-beanutils:commons-beanutils:1.9.3'
     implementation 'org.apache.xmlgraphics:batik-all:1.9.1'
     implementation 'org.apache.httpcomponents:httpclient:4.5.6'
+    implementation 'org.apache.httpcomponents:httpmime:4.5.6'
+
     implementation 'gnu.getopt:java-getopt:1.0.13'
     implementation 'net.sf.ehcache:ehcache:2.10.6'
+
 }
 
 sourceSets {
@@ -127,5 +132,4 @@ afterEvaluate {
 }
 
 // Set compileSlice to depend on the generation of ice files from "splitIce"
-tasks.compileSlice.dependsOn "splitIce"
-
+compileSlice.dependsOn "splitIce"
