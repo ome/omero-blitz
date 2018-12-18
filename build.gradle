@@ -1,8 +1,6 @@
 buildscript {
     repositories {
-        maven {
-            url "https://plugins.gradle.org/m2/"
-        }
+        gradlePluginPortal()
     }
     dependencies {
         classpath "gradle.plugin.com.zeroc.gradle.ice-builder:slice:1.4.5"
@@ -16,11 +14,13 @@ plugins {
     id 'org.openmicroscopy.blitz' version '5.5.0-SNAPSHOT'
 }
 
+// We have to use old plugin syntax in order for slice plugin to work
 apply plugin: "com.zeroc.gradle.ice-builder.slice"
 
 group = 'org.openmicroscopy'
 version = '5.5.0-SNAPSHOT'
-sourceCompatibility = 1.8
+sourceCompatibility = JavaVersion.VERSION_1_8
+targetCompatibility = JavaVersion.VERSION_1_8
 
 repositories {
     mavenCentral()
@@ -31,6 +31,18 @@ repositories {
 dependencies {
     testCompile group: 'junit', name: 'junit', version: '4.12'
     compile 'org.openmicroscopy:omero-server:5.5.0-SNAPSHOT'
+
+    implementation 'com.sun.activation:javax.activation:1.2.0'
+
+    implementation 'org.ini4j:ini4j:0.4.1'
+
+    implementation 'commons-beanutils:commons-beanutils:1.9.3'
+    implementation 'org.apache.xmlgraphics:batik-all:1.9.1'
+    implementation 'org.apache.httpcomponents:httpclient:4.5.6'
+    implementation 'org.apache.httpcomponents:httpmime:4.5.6'
+
+    implementation 'gnu.getopt:java-getopt:1.0.13'
+    implementation 'net.sf.ehcache:ehcache:2.10.6'
 }
 
 sourceSets {
@@ -51,7 +63,6 @@ sourceSets {
  **/
 blitz {
     outputPath "src/generated"
-
     api {
         java {
             language "java"
@@ -72,7 +83,6 @@ dsl {
             include: '**/*.vm'
     )
     outputPath "src/generated"
-
     resource {
         iceMap {
             template "java_ice_map.vm"
@@ -94,20 +104,26 @@ slice {
         ]
         files = fileTree(dir: "src/generated/slice", include: '**/*.ice') +
                 fileTree(dir: "src/main/slice", include: '**/*.ice')
+        args = "--tie"
     }
 }
 
 afterEvaluate {
     if (slice.iceVersion.contains('3.7')) {
         slice.output = file('src/generated/ice37')
-        dependencies.add('compile', 'com.zeroc:glacier2:3.7.+')
+        dependencies {
+            implementation 'com.zeroc:icegrid:3.7.+'
+            implementation 'com.zeroc:icestorm:3.7.+'
+        }
         sourceSets.main.java {
             srcDirs 'src/main/ice37', slice.output
         }
-
     } else if (slice.iceVersion.contains('3.6')) {
         slice.output = file('src/generated/ice36')
-        dependencies.add('compile', 'com.zeroc:glacier2:3.6.+')
+        dependencies {
+            implementation 'com.zeroc:icegrid:3.6.+'
+            implementation 'com.zeroc:icestorm:3.6.+'
+        }
         sourceSets.main.java {
             srcDirs 'src/main/ice36', slice.output
         }
@@ -115,5 +131,7 @@ afterEvaluate {
 }
 
 // Set compileSlice to depend on the generation of ice files from "splitIce"
-tasks.compileSlice.dependsOn "splitIce"
+compileSlice.dependsOn "splitIce"
 
+// Set compileJava to additionally depend on "splitJava"
+compileJava.dependsOn "splitJava"
