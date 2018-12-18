@@ -3,7 +3,7 @@ configurations {
 }
 
 dependencies {
-    mappings 'org.openmicroscopy:omero-model:1.0-SNAPSHOT'
+    mappings 'org.openmicroscopy:omero-model:5.5.0-SNAPSHOT'
 }
 
 // CONSTANTS
