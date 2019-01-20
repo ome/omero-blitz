@@ -311,7 +311,7 @@
   ==============================================================================
   -->
 
-  <bean id="::omero::cmd::Handle" class="omero.cmd._HandleTie" scope="prototype">
+  <bean id="omero_cmd_Handle" class="omero.cmd._HandleTie" scope="prototype">
     <constructor-arg>
         <bean class="omero.cmd.HandleI" scope="prototype">
             <constructor-arg ref="readOnlyStatus"/>
