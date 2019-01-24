@@ -1,6 +1,6 @@
 /*
  *------------------------------------------------------------------------------
- * Copyright (C) 2006-2018 University of Dundee. All rights reserved.
+ * Copyright (C) 2006-2019 University of Dundee. All rights reserved.
  *
  *
  * This program is free software; you can redistribute it and/or modify
@@ -243,7 +243,18 @@ public class ROIData
     }
 
     /**
-     * Returns the list of shapes on a given plane.
+     * Returns a list of all shapes.
+     * 
+     * @return See above.
+     */
+    public List<ShapeData> getShapes() {
+        List<ShapeData> res = new ArrayList<ShapeData>();
+        roiShapes.values().stream().forEach(list -> res.addAll(list));
+        return res;
+    }
+
+    /**
+     * Returns a list of shapes on a given plane.
      *
      * @param z The z-section.
      * @param t The timepoint.
