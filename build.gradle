@@ -89,16 +89,15 @@ blitz {
 
 dsl {
     databaseType "psql"
-
     resource {
         iceMap {
             template "java_ice_map.vm"
-            outputFile "java/omero/util/IceMap.java"
+            outputFile "$blitz.outputDir/java/omero/util/IceMap.java"
         }
 
         modelObjectFactoryRegistry {
             template "java_obj_reg.vm"
-            outputFile "java/omero/util/ModelObjectFactoryRegistry.java"
+            outputFile "$blitz.outputDir/java/omero/util/ModelObjectFactoryRegistry.java"
         }
 
         objectFactoryRegistrar {
