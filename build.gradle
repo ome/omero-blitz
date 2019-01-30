@@ -159,5 +159,18 @@ compileSlice.dependsOn "copySliceFiles"
 // Set compileJava to additionally depend on "splitJava"
 compileJava.dependsOn "splitJava"
 
+jar {
+    manifest {
+        attributes(
+                'Build-Timestamp': new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ").format(new Date()),
+                'Created-By': "Gradle ${gradle.gradleVersion}",
+                'Build-Jdk': "${System.properties['java.version']} (${System.properties['java.vendor']} ${System.properties['java.vm.version']})",
+                'Main-Class': 'ome.services.blitz.Entry',
+                "Class-Path": configurations.runtimeClasspath.collect { it.getName() }.join(' ')
+        )
+    }
+}
+
 // Add publish functionality
 apply from: 'publish.gradle'
+
