@@ -170,7 +170,7 @@ public class SessionI implements _SessionOperations {
 
             Ice.Object servant = null;
             for (String key : Arrays.asList(req.ice_id(),
-                    _HandleTie.ice_staticId().replace("::", "_"))) {
+                    _HandleTie.ice_staticId())) {
                 try {
                     servant = createServantDelegate(key);
                     if (servant != null && servant instanceof IHandle) {
