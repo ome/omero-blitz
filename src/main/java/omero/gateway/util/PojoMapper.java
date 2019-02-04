@@ -42,6 +42,7 @@ import omero.model.BooleanAnnotationI;
 import omero.model.CommentAnnotation;
 import omero.model.CommentAnnotationI;
 import omero.model.Dataset;
+import omero.model.DatasetAnnotationLinkI;
 import omero.model.DatasetI;
 import omero.model.DoubleAnnotation;
 import omero.model.Ellipse;
@@ -53,6 +54,7 @@ import omero.model.Fileset;
 import omero.model.Folder;
 import omero.model.IObject;
 import omero.model.Image;
+import omero.model.ImageAnnotationLinkI;
 import omero.model.ImageI;
 import omero.model.Label;
 import omero.model.Line;
@@ -65,15 +67,18 @@ import omero.model.Pixels;
 import omero.model.Plate;
 import omero.model.PlateAcquisition;
 import omero.model.PlateAcquisitionI;
+import omero.model.PlateAnnotationLinkI;
 import omero.model.PlateI;
 import omero.model.Point;
 import omero.model.Polygon;
 import omero.model.Polyline;
 import omero.model.Project;
+import omero.model.ProjectAnnotationLinkI;
 import omero.model.ProjectI;
 import omero.model.Rectangle;
 import omero.model.Roi;
 import omero.model.Screen;
+import omero.model.ScreenAnnotationLinkI;
 import omero.model.ScreenI;
 import omero.model.TagAnnotation;
 import omero.model.TagAnnotationI;
@@ -82,6 +87,7 @@ import omero.model.TermAnnotationI;
 import omero.model.TimestampAnnotation;
 import omero.model.TimestampAnnotationI;
 import omero.model.Well;
+import omero.model.WellAnnotationLinkI;
 import omero.model.WellI;
 import omero.model.WellSample;
 import omero.model.XmlAnnotation;
@@ -676,5 +682,21 @@ public class PojoMapper
                 nodeType.equals(PlateAcquisitionData.class))
             return PlateAcquisitionI.class.getName();
         throw new IllegalArgumentException("type not supported");
+    }
+
+    /**
+     * Gets the type of an IObject class as String which can be used in HQL
+     * queries.
+     * 
+     * @param clazz
+     *            The IObject
+     * @return See above
+     */
+    public static String getHQLEntityName(Class<? extends IObject> clazz) {
+        String name = clazz.getSimpleName();
+        if (name.endsWith("I"))
+            return name.substring(0, name.length() - 1);
+        else
+            return name;
     }
 }
