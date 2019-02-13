@@ -328,7 +328,7 @@ TOGGLE AND CREATE COLLECTIONS:
 #foreach( $property in $type.propertyClosure )
 #set(     $PropertyName = $property.nameCapped )
 #set(     $javaType = $property.type)
-#set(     $ActualPojo = $property.actualType.shortname)
+#set(     $ActualPojo = $property.actualType.getShortname())
 #set(     $seqName = "${ActualPojo}${PropertyName.substring(0,1).toUpperCase()}${PropertyName.substring(1,$PropertyName.length())}Seq" )## seqName copied from ice_defs.vm
 #set($genericType = $property.type)
 #set($genericType = $genericType.replaceFirst("ome.model..+?[.]","omero::model::"))
