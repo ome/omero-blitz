@@ -117,7 +117,9 @@ public class GraphUtil {
      * @param session the Hibernate session
      * @param targetObjects the objects that are to be deleted
      * @return the given target objects with any original files suitably ordered for deletion
+     * @deprecated in anticipation of refactoring
      */
+    @Deprecated
     static SetMultimap<String, Long> arrangeDeletionTargets(Session session, SetMultimap<String, Long> targetObjects) {
         if (targetObjects.get(OriginalFile.class.getName()).size() < 2) {
             /* no need to rearrange anything, as there are not multiple original files */

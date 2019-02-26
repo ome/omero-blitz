@@ -63,6 +63,7 @@ public class GraphUtilTest {
      * Generate test data for {@link #testGetFirstClassName(String, String)}.
      * @return pairs of type paths and the first class name from each path
      */
+    @Deprecated
     @DataProvider(name = "type paths")
     public String[][] getTypePaths() {
         return new String[][] {
