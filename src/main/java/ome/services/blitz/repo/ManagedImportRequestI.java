@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2014 Glencoe Software, Inc. All rights reserved.
+ * Copyright (C) 2012-2019 Glencoe Software, Inc. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -43,6 +43,7 @@ import ome.formats.importer.targets.ServerTemplateImportTarget;
 import ome.formats.importer.util.ErrorHandler;
 import ome.io.nio.TileSizes;
 import ome.services.blitz.fire.Registry;
+import ome.services.blitz.util.FileSystemUtil;
 
 import omero.ServerError;
 import omero.api.ServiceFactoryPrx;
@@ -210,7 +211,7 @@ public class ManagedImportRequestI extends ImportRequest implements IRequest {
     public void init(Helper helper) {
         StopWatch sw = new Slf4JStopWatch();
         this.helper = helper;
-        helper.setSteps(5);
+        helper.setSteps(6);
 
         final EventContext ec = helper.getEventContext();
         final ImportConfig config = new ImportConfig();
@@ -520,16 +521,18 @@ public class ManagedImportRequestI extends ImportRequest implements IRequest {
             }
 
             if (step == 0) {
-                return importMetadata((MetadataImportJob) j);
+                return setReadOnly();
             } else if (step == 1) {
-                return pixelData(null);//(ThumbnailGenerationJob) j);
+                return importMetadata((MetadataImportJob) j);
             } else if (step == 2) {
-                return generateThumbnails(null);//(PixelDataJob) j); Nulls image
+                return pixelData(null);//(ThumbnailGenerationJob) j);
             } else if (step == 3) {
+                return generateThumbnails(null);//(PixelDataJob) j); Nulls image
+            } else if (step == 4) {
                 // TODO: indexing and scripting here as well.
                 store.launchProcessing();
                 return null;
-            } else if (step == 4) {
+            } else if (step == 5) {
                 return objects;
             } else {
                 throw helper.cancel(new ERR(), null, "bad-step",
@@ -587,7 +590,7 @@ public class ManagedImportRequestI extends ImportRequest implements IRequest {
     @SuppressWarnings({ "unchecked", "rawtypes" })
     public void buildResponse(int step, Object object) {
         helper.assertResponse(step);
-        if (step == 4) {
+        if (step == 5) {
             ImportResponse rsp = new ImportResponse();
             Map<String, List<IObject>> rv = (Map<String, List<IObject>>) object;
             rsp.pixels = (List) rv.get(Pixels.class.getSimpleName());
@@ -617,6 +620,20 @@ public class ManagedImportRequestI extends ImportRequest implements IRequest {
     //
     // ACTIONS
     //
+
+    /**
+     * Set the used files to read-only.
+     * @return how many used files are read-only regular files
+     */
+    public int setReadOnly() {
+        int successes = 0;
+        for (final String usedFile : usedFiles) {
+            if (FileSystemUtil.setReadOnly(usedFile)) {
+                successes++;
+            }
+        }
+        return successes;
+    }
 
     /**
      * Uses the {@link OMEROMetadataStoreClient} to save all metadata for the
