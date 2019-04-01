@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 University of Dundee & Open Microscopy Environment.
+ * Copyright (C) 2014-2019 University of Dundee & Open Microscopy Environment.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -23,6 +23,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+
+import ome.services.blitz.util.FileSystemUtil;
 
 /**
  * Local-only file transfer mechanism which makes use of soft-linking.
@@ -63,9 +65,14 @@ public class SymlinkFileTransfer extends AbstractExecFileTransfer {
     }
 
     /**
-     * No cleanup is needed for soft-linking.
+     * Set permissions on original file to read-only.
      */
+    @Override
     public void afterTransfer(int errors, List<String> srcFiles) {
-        // no-op
+        if (errors == 0) {
+            for (final String srcFile : srcFiles) {
+                FileSystemUtil.setReadOnly(srcFile);
+            }
+        }
     }
 }
