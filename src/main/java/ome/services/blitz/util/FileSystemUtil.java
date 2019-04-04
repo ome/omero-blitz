@@ -72,7 +72,7 @@ public class FileSystemUtil {
                     return true;
                 }
             } catch (IOException | UnsupportedOperationException e) {
-                LOGGER.warn("failed to set to read-only: {}", path, e);
+                LOGGER.warn("failed to set to read-only: {}", e.getMessage());
             }
             return false;
     }
