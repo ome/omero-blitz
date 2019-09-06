@@ -273,7 +273,7 @@ module omero {
 
                 /**
                  * Sets the sub-interval of the device space i.e. a discrete
-                 * sub-interval of \[0, 255].
+                 * sub-interval of &lbrack;0, 255].
                  *
                  * @param start The lower bound of the interval.
                  * @param end The upper bound of the interval.

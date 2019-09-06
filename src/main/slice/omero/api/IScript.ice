@@ -25,7 +25,7 @@ module omero {
          * scripts = svc.getScripts()
          *
          * if len(scripts) >= 1:
-         *   script_id = svc.keys()\[-1]
+         *   script_id = svc.keys()&lbrack;-1]
          * else:
          *   script_id = svc.uploadScript('/test/my_script.py', SCRIPT_TEXT)
          *
@@ -74,7 +74,7 @@ module omero {
                  * for script in scripts:
                  *     text = scriptService.getScriptText(script.id.val)
                  *     # First character is a "/" symbol
-                 *     path = script.path.val\[1:\]
+                 *     path = script.path.val&lbrack;1:\]
                  *     path = path.replace("/",".")
                  *     print "Possible import: %s" % path
                  * }
@@ -105,7 +105,7 @@ module omero {
                  * scripts = scriptService.getScripts("py")
                  * for script in scripts:
                  *     text = scriptService.getScriptText(script.id.val)
-                 *     path = script.path.val\[1:\] # First symbol is a "/"
+                 *     path = script.path.val&lbrack;1:\] # First symbol is a "/"
                  *     path = path.replace("/",".")
                  *     print "Possible import: %s" % path
                  * }

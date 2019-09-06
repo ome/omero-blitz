@@ -93,7 +93,7 @@ module omero {
          *
          * <pre>
          * a = omero.scripts.String("a")
-         * a.param().values = \["hi", "bye"]
+         * a.param().values = &lbrack;"hi", "bye"]
          * </pre>
          **/
         class Param {
@@ -128,9 +128,9 @@ module omero {
              * param = ...;
              * inputs = ...;
              * if name in inputs:
-             *     value = inputs\[name]
-             * elif param.inputs\[name].useDefault:
-             *     value = param.inputs\[name].prototype
+             *     value = inputs&lbrack;name]
+             * elif param.inputs&lbrack;name].useDefault:
+             *     value = param.inputs&lbrack;name].prototype
              * </pre>
              **/
             bool useDefault;
@@ -250,14 +250,14 @@ module omero {
              * might be displayed as:
              * </p>
              *
+             * <div>
              * <pre>
-             *
-             *  Scale Bar: \[ on/off ]
-             *  ======================
-             *    Color:  \[rgb]
-             *    Size:   \[ 10]
-             *
+             *      Scale Bar: &lbrack; on/off ]
+             *      =====================
+             *        Color:  &lbrack;rgb]
+             *        Size:   &lbrack; 10]
              * </pre>
+             * </div>
              *
              **/
             string grouping;
@@ -302,7 +302,7 @@ module omero {
          *
          * <pre>
          * params = omero.grid.JobParams()
-         * params.authors = \["Andy", "Kathy"]
+         * params.authors = &lbrack;"Andy", "Kathy"]
          * params.version = "0.0.1"
          * params.description = """
          *     Clever way to count to 5
@@ -353,14 +353,14 @@ module omero {
             omero::api::StringArray institutions;
 
             /**
-             * For authors\[i], authorInstitutions\[i] should be
+             * For authors&lbrack;i], authorInstitutions&lbrack;i] should be
              * and array of indexes j such that author i is a member
-             * of authorsInstitutions\[i]\[j].
+             * of authorsInstitutions&lbrack;i]&lbrack;j].
              *
              * Example:
-             *   authors = \["Jane", "Mike"]
-             *   institutions = \["Acme U.", "Private Corp."]
-             *   authorsInstitutions = \[\[1, 2], \[1]]
+             *   authors = &lbrack;"Jane", "Mike"]
+             *   institutions = &lbrack;"Acme U.", "Private Corp."]
+             *   authorsInstitutions = &lbrack;&lbrack;1, 2], &lbrack;1]]
              *
              * which means that Jane is a member of both "Acme U."
              * and "Private Corp." while Mike is only a member of

@@ -32,7 +32,7 @@ module omero {
          * The map return values will be indexed by the short type name above:
          * <i>Project</i>, <i>Image</i>, ... All keys which are passed in the
          * StringSet argument will be included in the returned map, even if
-         * they have no values. A default value of 0 or the empty list \[]
+         * they have no values. A default value of 0 or the empty list &lbrack;]
          * will be used.
          * The only exception to this rule is that the null or empty StringSet
          * implies all valid keys.
@@ -53,8 +53,8 @@ module omero {
          * The methods which take a StringSet and a Parameters object, also
          * have a <i>bool merge</i> argument. This argument defines whether or
          * not the LIMIT applies to each object independently
-         * (<code>\["a","b"] @ 100 == 200</code>) or merges the lists together
-         * chronologically (<code>\["a","b"] @ 100 merged == 100</code>).
+         * (<code>&lbrack;"a","b"] @ 100 == 200</code>) or merges the lists together
+         * chronologically (<code>&lbrack;"a","b"] @ 100 merged == 100</code>).
          *
          * <h4>Time used</h4>
          *
@@ -70,7 +70,7 @@ module omero {
          * {@code
          *     timeline = sf.getTimelineService()
          *     params = ParametersI().page(0,100)
-         *     types = \["Project","Dataset"])
+         *     types = &lbrack;"Project","Dataset"])
          *     map = timeline.getByPeriod(types, params, False)
          * }
          * </pre>

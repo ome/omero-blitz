@@ -128,7 +128,7 @@ module omero {
              * <pre>
              * sf = client.createSession()
              * objs = sf.getSecurityContexts()
-             * old = sf.setSecurityContext(objs\[-1])
+             * old = sf.setSecurityContext(objs&lbrack;-1])
              * </pre>
              *
              **/
