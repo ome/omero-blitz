@@ -181,21 +181,46 @@ public class Helper {
     // =========================================================================
     //
 
+    private static Throwable anyThrowable(Object...args) {
+        int index = args.length;
+        while (--index >= 0) {
+            if (args[index] instanceof Throwable) {
+                return (Throwable) args[index];
+            }
+        }
+        return null;
+    }
+
     public void debug(String fmt, Object...args) {
         if (log.isDebugEnabled()) {
-            log.debug(String.format(fmt, args));
+            final Throwable t = anyThrowable(args);
+            if (t == null) {
+                log.debug(String.format(fmt, args));
+            } else {
+                log.debug(String.format(fmt, args), t);
+            }
         }
     }
 
     public void info(String fmt, Object...args) {
         if (log.isInfoEnabled()) {
-            log.info(String.format(fmt, args));
+            final Throwable t = anyThrowable(args);
+            if (t == null) {
+                log.info(String.format(fmt, args));
+            } else {
+                log.info(String.format(fmt, args), t);
+            }
         }
     }
 
     public void warn(String fmt, Object...args) {
         if (log.isWarnEnabled()) {
-            log.warn(String.format(fmt, args));
+            final Throwable t = anyThrowable(args);
+            if (t == null) {
+                log.warn(String.format(fmt, args));
+            } else {
+                log.warn(String.format(fmt, args), t);
+            }
         }
     }
 
