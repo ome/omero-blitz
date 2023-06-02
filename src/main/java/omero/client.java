@@ -422,6 +422,12 @@ public class client {
         }
         id.properties.setProperty("Ice.Default.Router", router);
 
+        // Check for Ice and omero environment properties
+        System.getenv().forEach((k, v) -> {
+            if (k.startsWith("Ice.") || k.startsWith("omero."))
+                id.properties.setProperty(k, v);
+        });
+
         // Dump properties
         String dump = id.properties.getProperty("omero.dump");
         if (dump != null && dump.length() > 0) {
