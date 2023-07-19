@@ -1,3 +1,9 @@
+5.6.3 (July 2023)
+-----------------
+
+- Bump omero-common-test version to 5.6.2
+- Bump omero-server version to 5.6.8
+
 5.6.2 (March 2023)
 ------------------
 
