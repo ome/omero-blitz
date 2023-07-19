@@ -35,7 +35,7 @@ dependencies {
     testImplementation('org.openmicroscopy:omero-common-test:5.6.1')
     testImplementation('org.quartz-scheduler:quartz:2.2.1')
     
-    api("org.openmicroscopy:omero-server:5.6.7")
+    api("org.openmicroscopy:omero-server:5.6.8")
 
     implementation("com.sun.activation:javax.activation:1.2.0")
     implementation("org.ini4j:ini4j:0.4.1")
