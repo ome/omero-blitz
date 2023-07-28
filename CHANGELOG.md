@@ -1,3 +1,8 @@
+5.7.0 (July 2023)
+-----------------
+
+- Remove support for ADH and let Ice choose the default SSL protocol ([#139](https://github.com/ome/omero-blitz/pull/139))
+
 5.6.3 (July 2023)
 -----------------
 
