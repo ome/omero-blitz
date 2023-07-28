@@ -379,10 +379,6 @@ public class client {
         optionallySetProperty(id, "Ice.Default.EndpointSelection", "Ordered");
         optionallySetProperty(id, "Ice.Default.PreferSecure", "1");
         optionallySetProperty(id, "Ice.Plugin.IceSSL", "IceSSL.PluginFactory");
-        optionallySetProperty(id, "IceSSL.Protocols", "tls1_0,tls1_1,tls1_2");
-        // This cipher specification includes the default ciphers + anon-DH
-        // ciphers required by OMERO.server in its default configuration.
-        optionallySetProperty(id, "IceSSL.Ciphers", "(DH_anon.*AES)");
         optionallySetProperty(id, "IceSSL.VerifyDepthMax", "6");
         optionallySetProperty(id, "IceSSL.VerifyPeer", "0");
         optionallySetProperty(id, "omero.block_size", Integer
