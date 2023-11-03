@@ -1,3 +1,23 @@
+5.7.1 (September 2023)
+----------------------
+
+ - Revert "Java client init: no "anon" among jdk.tls.disabledAlgorithms"
+ ([#146](https://github.com/ome/omero-blitz/pull/146))
+ - Bump omero-server version to 5.6.9
+ - Bump omero-common-test version to 5.6.3
+ - Add top-level Git mailmap
+
+5.7.0 (July 2023)
+-----------------
+
+- Remove support for ADH and let Ice choose the default SSL protocol ([#139](https://github.com/ome/omero-blitz/pull/139))
+
+5.6.3 (July 2023)
+-----------------
+
+- Bump omero-common-test version to 5.6.2
+- Bump omero-server version to 5.6.8
+
 5.6.2 (March 2023)
 ------------------
 

@@ -29,7 +29,6 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
-import java.security.Security;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -200,42 +199,6 @@ public class client {
     // Creation
     // =========================================================================
 
-    /**
-     * Ensure that anonymous cipher suites are enabled in the JRE.
-     */
-    static {
-        final String property = "jdk.tls.disabledAlgorithms";
-        final String value = Security.getProperty(property);
-        if (!(value == null || value.trim().isEmpty())) {
-            final List<String> algorithms = new ArrayList<>();
-            boolean isChanged = false;
-            for (String algorithm : value.split(",")) {
-                algorithm = algorithm.trim();
-                final String algorithmLower = algorithm.toLowerCase();
-                if (algorithm.isEmpty()) {
-                    /* ignore */
-                } else if (algorithmLower.equals("anon") || algorithmLower.endsWith("_anon")) {
-                    isChanged = true;
-                } else {
-                    algorithms.add(algorithm);
-                }
-            }
-            if (isChanged) {
-                boolean needsComma = false;
-                final StringBuilder newValue = new StringBuilder();
-                for (final String algorithm : algorithms) {
-                    if (needsComma) {
-                        newValue.append(", ");
-                    } else {
-                        needsComma = true;
-                    }
-                    newValue.append(algorithm);
-                }
-                Security.setProperty(property, newValue.toString());
-            }
-        }
-    }
-
     private static Properties defaultRouter(String host, int port) {
         Properties p = new Properties();
         p.setProperty("omero.host", host);
@@ -379,10 +342,6 @@ public class client {
         optionallySetProperty(id, "Ice.Default.EndpointSelection", "Ordered");
         optionallySetProperty(id, "Ice.Default.PreferSecure", "1");
         optionallySetProperty(id, "Ice.Plugin.IceSSL", "IceSSL.PluginFactory");
-        optionallySetProperty(id, "IceSSL.Protocols", "tls1_0,tls1_1,tls1_2");
-        // This cipher specification includes the default ciphers + anon-DH
-        // ciphers required by OMERO.server in its default configuration.
-        optionallySetProperty(id, "IceSSL.Ciphers", "(DH_anon.*AES)");
         optionallySetProperty(id, "IceSSL.VerifyDepthMax", "6");
         optionallySetProperty(id, "IceSSL.VerifyPeer", "0");
         optionallySetProperty(id, "omero.block_size", Integer

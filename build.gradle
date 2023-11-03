@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "org.openmicroscopy"
-version = "5.6.3-SNAPSHOT"
+version = "5.7.2-SNAPSHOT"
 
 repositories {
     mavenLocal()
@@ -32,10 +32,10 @@ dependencies {
     testImplementation("jmock:jmock:1.+")
     testImplementation("org.testng:testng:7.5")
     testImplementation('nl.javadude.assumeng:assumeng:1.2.4')
-    testImplementation('org.openmicroscopy:omero-common-test:5.6.1')
+    testImplementation('org.openmicroscopy:omero-common-test:5.6.3')
     testImplementation('org.quartz-scheduler:quartz:2.2.1')
     
-    api("org.openmicroscopy:omero-server:5.6.7")
+    api("org.openmicroscopy:omero-server:5.6.9")
 
     implementation("com.sun.activation:javax.activation:1.2.0")
     implementation("org.ini4j:ini4j:0.4.1")
