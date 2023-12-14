@@ -1,3 +1,10 @@
+5.7.2 (December 2023)
+---------------------
+
+ - Bump logback-classic to version 1.3.14 ([#137](https://github.com/ome/omero-blitz/pull/137))
+ - Bump omero-server version to 5.6.10
+ - Bump omero-common-test version to 5.6.4
+
 5.7.1 (September 2023)
 ----------------------
 
