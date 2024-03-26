@@ -779,15 +779,15 @@ public class RepositoryDaoImpl implements RepositoryDao {
      * Internal file registration which must happen within a single tx. All
      * files in the same directory are loaded in one block.
      *
-     * @param repoUuid
-     * @param checked
+     * @param repoUuid              UUID of the repository where original files should be registered
+     * @param checked               a list of checked server paths to register as OriginalFile
+     * @param parents               a list of parent server paths. Must be of the same length and in the same order as checked
      * @param checksumAlgorithm 
      * @param mimetype
-     * @param parent
      * @param sf non-null
      * @param sql non-null
      * @param session
-     * @return
+     * @return                      a list of OriginalFile of the same length and in the same order as the checked input
      */
     private List<ome.model.core.OriginalFile> _internalRegister(final String repoUuid,
             final List<CheckedPath> checked, final List<CheckedPath> parents,
@@ -842,7 +842,23 @@ public class RepositoryDaoImpl implements RepositoryDao {
             }
             sw.stop("omero.repo.internal_register.load");
         }
-        return toReturn;
+
+        // At this stage, the order of toReturn will be determined by
+        // order in which the levels ListMultimap was processed
+        // We are sorting this list to match the order of checked
+        StopWatch sw = new Slf4JStopWatch();
+        final List<ome.model.core.OriginalFile> toReturnSorted = new ArrayList<ome.model.core.OriginalFile>();
+        for (CheckedPath path : checked) {
+            // Newly created OriginalFile objects with createOriginalFile()
+            // will have their names prefixed with fileRepoSecretKey
+            ome.model.core.OriginalFile of = toReturn.stream().filter(
+                    f -> (f.getName().equals(path.getName()) ||
+                          f.getName().equals(fileRepoSecretKey + path.getName())) &&
+                         f.getPath().equals(path.getRelativePath())).findFirst().get();
+            toReturnSorted.add(of);
+        }
+        sw.stop("omero.repo.internal_register.sort");
+        return toReturnSorted;
     }
 
     public FsFile getFile(final long id, final Ice.Current current,
