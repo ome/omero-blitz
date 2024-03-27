@@ -389,7 +389,7 @@ module omero {
                  *             <ul>
                  *             <li><code>sizeX</code> is negative</li>
                  *             <li><code>sizeY</code> is negative</li>
-                 *             <li>{@link setPixelsId} has not yet been called</li>
+                 *             <li>{@code setPixelsId} has not yet been called</li>
                  *             </ul>
                  * @see #getThumbnail
                  * @see #getThumbnailDirect
