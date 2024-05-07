@@ -1,3 +1,10 @@
+5.7.3 (May 2024)
+----------------
+
+ - Fix ordering of OriginalFile objects registered in saveFileset() ([#148](https://github.com/ome/omero-blitz/pull/148))
+ - Bump omero-server version to 5.6.11
+ - Bump omero-common-test version to 5.6.5
+
 5.7.2 (December 2023)
 ---------------------
 
