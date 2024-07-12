@@ -343,6 +343,7 @@ public class ManagedImportProcessI extends AbstractCloseableAmdServant
                     + "WHERE fileset.id = :id";
             final Parameters params = new ParametersI().addId(fs.getId());
             List<List<RType>> results;
+            StopWatch sw1 = new Slf4JStopWatch();
             try {
                 results = iQuery.projection(hql, params, groupContext);
             } catch (SecurityViolation sv) {
@@ -362,7 +363,6 @@ public class ManagedImportProcessI extends AbstractCloseableAmdServant
                     ((RString) results.get(i).get(0)).getValue());
             }
             for (int i = 0; i < size; i++) {
-                StopWatch sw1 = new Slf4JStopWatch();
                 String usedFile = location.sharedPath + FsFile.separatorChar + location.usedFiles.get(i);
                 final String clientHash = hashes.get(i);
                 String serverHash = serverHashes.getOrDefault(usedFile, null);
@@ -372,9 +372,8 @@ public class ManagedImportProcessI extends AbstractCloseableAmdServant
                 } else if (!clientHash.equals(serverHash)) {
                     failingChecksums.put(i, serverHash);
                 }
-
-                sw1.stop("omero.import.process.checksum");
             }
+            sw1.stop("omero.import.process.checksum");
 
             if (!failingChecksums.isEmpty()) {
                 throw new omero.ChecksumValidationException(null,
