@@ -44,6 +44,7 @@ import ome.services.blitz.util.ServiceFactoryAware;
 import ome.services.util.Executor;
 import ome.system.Login;
 import omero.RString;
+import omero.RType;
 import omero.SecurityViolation;
 import omero.ServerError;
 import omero.api.IQueryPrx;
@@ -338,37 +339,41 @@ public class ManagedImportProcessI extends AbstractCloseableAmdServant
             Map<Integer, String> failingChecksums = new HashMap<Integer, String>();
             Map<String, String> groupContext = ImmutableMap.of(Login.OMERO_GROUP, "-1");
             final IQueryPrx iQuery = sf.getQueryService(__current);
-            final String hql = "SELECT originalFile.hash FROM FilesetEntry "
-                    + "WHERE fileset.id = :id AND originalFile.path || originalFile.name = :usedfile";
-            for (int i = 0; i < size; i++) {
-                StopWatch sw1 = new Slf4JStopWatch();
-                String usedFile = location.sharedPath + FsFile.separatorChar + location.usedFiles.get(i);
-                final Parameters params = new ParametersI().addId(fs.getId()).add("usedfile", omero.rtypes.rstring(usedFile));
-                final String clientHash = hashes.get(i);
-                String serverHash = "";
-                try {
-                    RString result;
-                    try {
-                        result = (RString) iQuery.projection(hql, params, groupContext).get(0).get(0);
-                    } catch (SecurityViolation sv) {
-                        if (groupContext == null) {
-                            /* No other workaround to try. */
-                            throw sv;
-                        }
-                        /* The permissions context probably locks us to only certain groups. */
-                        log.debug("all-groups query for file checksum failed, retrying with current group context", sv);
-                        result = (RString) iQuery.projection(hql, params).get(0).get(0);
-                        groupContext = null;
-                    }
-                    serverHash = result.getValue();
-                } catch (IndexOutOfBoundsException | NullPointerException e) {
-                    log.error("no server checksum on uploaded file {}", usedFile, e);
+            final String hql = "SELECT originalFile.hash, originalFile.path || originalFile.name FROM FilesetEntry "
+                    + "WHERE fileset.id = :id";
+            final Parameters params = new ParametersI().addId(fs.getId());
+            List<List<RType>> results;
+            StopWatch sw1 = new Slf4JStopWatch();
+            try {
+                results = iQuery.projection(hql, params, groupContext);
+            } catch (SecurityViolation sv) {
+                if (groupContext == null) {
+                    /* No other workaround to try. */
+                    throw sv;
                 }
-                if (serverHash.isEmpty() || !clientHash.equals(serverHash)) {
+                /* The permissions context probably locks us to only certain groups. */
+                log.debug("all-groups query for file checksum failed, retrying with current group context", sv);
+                results = iQuery.projection(hql, params);
+                groupContext = null;
+            }
+            Map<String, String> serverHashes = new HashMap<String, String>();
+            for (int i = 0; i < results.size(); i++) {
+                serverHashes.put(
+                    ((RString) results.get(i).get(1)).getValue(),
+                    ((RString) results.get(i).get(0)).getValue());
+            }
+            for (int i = 0; i < size; i++) {
+                String usedFile = location.sharedPath + FsFile.separatorChar + location.usedFiles.get(i);
+                final String clientHash = hashes.get(i);
+                String serverHash = serverHashes.getOrDefault(usedFile, null);
+                if (serverHash == null) {
+                    log.error("no server checksum on uploaded file {}", usedFile);
+                    failingChecksums.put(i, "");
+                } else if (!clientHash.equals(serverHash)) {
                     failingChecksums.put(i, serverHash);
                 }
-                sw1.stop("omero.import.process.checksum");
             }
+            sw1.stop("omero.import.process.checksum");
 
             if (!failingChecksums.isEmpty()) {
                 throw new omero.ChecksumValidationException(null,
