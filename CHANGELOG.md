@@ -1,3 +1,10 @@
+5.7.4 (July 2024)
+-----------------
+
+ - Improve checksum validation performance for large filesets ([#150](https://github.com/ome/omero-blitz/pull/150))
+ - Bump omero-server version to 5.6.12
+ - Bump omero-common-test version to 5.6.7
+
 5.7.3 (May 2024)
 ----------------
 
