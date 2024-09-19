@@ -155,18 +155,32 @@ module omero {
                 getHeaders()
                 throws omero::ServerError;
 
+            /**
+             * Return the number of rows of a table.
+             **/
             idempotent
             long
                 getNumberOfRows()
                 throws omero::ServerError;
 
             /**
-             * http://www.pytables.org/docs/manual/apb.html
+             * Run a query on a table.
              *
-             * Leave all three of start, stop, step to 0 to disable.
+             * The meaning of the start and stop parameters are the same as in the
+             * built-in Python slices. Setting start, step and stop to 0 is interpreted
+             * as running the query against all rows.
              *
-             * TODO:Test effect of returning a billion rows matching getWhereList()
-             *
+             * @param condition A query string - see the
+             * <a href="https://omero.readthedocs.io/en/stable/developers/Tables.html#tables-query-language">tables query language</a>
+             * for more details.
+             * @param variables A mapping of strings and variable values to be substituted into
+             * condition. This can often be left empty.
+             * @param start The start of the range of rows to consider.
+             * @param stop The end of the range of rows to consider.
+             * @param step The stepping interval of the range of rows to consider. Set to 0
+             * to disable stepping.
+             * @return A list of row indices matching the condition which can be passed as a
+             * parameter of {@link #readCoordinates} or {@link #slice}.
              **/
             idempotent
             omero::api::LongArray
@@ -174,10 +188,13 @@ module omero {
                 throws omero::ServerError;
 
             /**
-             * Read the given rows of data.
+             * Read a set of entire rows in the table.
              *
-             * @param rowNumbers must contain at least one element or an
-             * {@link omero.ApiUsageException} will be thrown.
+             * @param rowNumbers A list of row indices to be retrieved from the table.
+             * The indices may be non-consecutive and must contain at least one element
+             * or an {@link omero.ApiUsageException} will be thrown.
+             * @return The requested rows as a {@link omero.grid.Data} object. The results
+             * will be returned in the same order as the row indices.
              **/
             idempotent
             Data
@@ -185,7 +202,18 @@ module omero {
                 throws omero::ServerError;
 
             /**
-             * http://www.pytables.org/docs/manual/ch04.html#Table.read
+             * Read a subset of columns and consecutive rows from a table.
+             *
+             * The meaning of the start and stop parameters are the same as in the
+             * built-in Python slices. Setting both start and stop to 0 is
+             * interpreted as returning all rows.
+             *
+             * @param colNumbers A list of column indices to be retrieved from the table.
+             * The indices may be non-consecutive and must contain at least one element
+             * or an {@link omero.ApiUsageException} will be thrown.
+             * @param start The first element of the range of rows to retrieve. Must be non null.
+             * @param stop The stop of the range of rows to retrieve. Must be non null.
+             * @return The requested columns and rows as a {@link omero.grid.Data} object.
              **/
             idempotent
             Data
@@ -193,20 +221,16 @@ module omero {
                 throws omero::ServerError;
 
             /**
-             * Simple slice method which will return only the given columns
-             * and rows in the order supplied.
+             * Read a subset of columns and consecutive rows from a table.
              *
-             * If colNumbers or rowNumbers is empty (or None), then all values
+             * @param colNumbers A list of column indices to be retrieved from the table.
+             * The indices may be non-consecutive. If set to empty or null, all columns
              * will be returned.
-             *
-             * <h4>Python examples:</h4>
-             * <pre>
-             * data = table.slice(None, None)
-             * assert len(data.rowNumbers) == table.getNumberOfRows()
-             *
-             * data = table.slice(None, \[3,2,1])
-             * assert data.rowNumbers == \[3,2,1]
-             * </pre>
+             * @param rowNumbers A list of row indices to be retrieved from the table.
+             * The indices may be non-consecutive. If set empty or null, all rows will
+             * be returned.
+             * @return The requested columns and rows as a {@link omero.grid.Data} object.
+             * The results will be returned in the same order as the column and row indices.
              **/
             idempotent
             Data
