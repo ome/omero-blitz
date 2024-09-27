@@ -363,6 +363,13 @@ module omero {
                 idempotent bool isFloat() throws ServerError;
 
                 /**
+                 * Returns whether or not the pixels are considered as RGB
+                 * by the bioformats reader.
+                 * @return See above.
+                 */
+                idempotent bool isRGB() throws ServerError;
+
+                /**
                  * Calculates a SHA-1 message digest for the entire pixel store.
                  * @return byte array containing the message digest.
                  */
