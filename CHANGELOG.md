@@ -1,3 +1,11 @@
+5.8.0 (November 2024)
+---------------------
+
+ - Build with Java 11 ([#154](https://github.com/ome/omero-blitz/pull/154))
+ - Review API documentation of the omero.grid.Table ([#152](https://github.com/ome/omero-blitz/pull/152))
+ - Bump omero-server version to 5.7.0
+ - Bump omero-common-test version to 5.7.0
+
 5.7.4 (July 2024)
 -----------------
 
