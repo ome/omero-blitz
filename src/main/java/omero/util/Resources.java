@@ -15,7 +15,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Container class for storing resources which should be cleaned up on close and
@@ -46,7 +47,7 @@ public class Resources {
         void cleanup();
     }
 
-    private static Logger log = Logger.getLogger(Resources.class.getName());
+    private static Logger log = LoggerFactory.getLogger(Resources.class.getName());
 
     private final int sleeptime;
 
@@ -75,21 +76,21 @@ public class Resources {
     public Resources(int sleeptimeSeconds, ScheduledExecutorService service) {
         this.sleeptime = sleeptimeSeconds;
         this.service = service;
-        log.finest("Starting");
+        log.trace("Starting");
         this.future = this.service.scheduleAtFixedRate(task(), 1, sleeptime, TimeUnit.SECONDS);
     }
 
     private Runnable task() {
         return new Runnable() {
             public void run() {
-                log.finest("Running checks...");
+                log.trace("Running checks...");
                 for (Entry entry : stuff) {
-                    log.finest("Checking " + entry);
+                    log.trace("Checking " + entry);
                     boolean success = true;
                     try {
                         success = entry.check();
                     } catch (Exception e) {
-                        log.warning("Exception thrown by entry: "
+                        log.warn("Exception thrown by entry: "
                                 + e.getMessage());
                         success = false;
                     }
@@ -97,7 +98,7 @@ public class Resources {
                         remove(entry);
                     }
                 }
-                log.finest("Finished checks.");
+                log.trace("Finished checks.");
             }
 
         };
@@ -105,10 +106,10 @@ public class Resources {
 
     public void add(Entry entry) {
         if (entry == null) {
-            log.warning("Entry null");
+            log.warn("Entry null");
             return;
         }
-        log.finest("Adding object " + entry);
+        log.trace("Adding object " + entry);
         stuff.add(entry);
     }
 
@@ -118,30 +119,30 @@ public class Resources {
 
     public void cleanup() {
 
-        log.finest("Cleaning called");
+        log.trace("Cleaning called");
 
         for (Entry entry : stuff) {
             remove(entry);
         }
 
-        log.finest("Stopping");
+        log.trace("Stopping");
         // Cancel thread; allows current task to finish
         future.cancel(false);
-        log.finest("Stopped");
+        log.trace("Stopped");
     }
 
     public void remove(Entry entry) {
         if (entry == null) {
-            log.warning("Entry null");
+            log.warn("Entry null");
             return;
         }
-        log.finest("Cleaning " + entry);
+        log.trace("Cleaning " + entry);
         try {
             entry.cleanup();
         } catch (Exception e) {
-            log.warning("Cleaning entry threw an exception" + e);
+            log.warn("Cleaning entry threw an exception" + e);
         }
-        log.finest("Removing " + entry);
+        log.trace("Removing " + entry);
         stuff.remove(entry);
     }
 
