@@ -1,3 +1,9 @@
+5.8.1 (March 2025)
+------------------
+
+- Replace usage of Java Util Logging (JUL) by SLF4J ([#155](https://github.com/ome/omero-blitz/pull/155)) 
+- Bump omero-server and omero-common-test to 5.7.1
+
 5.8.0 (November 2024)
 ---------------------
 
