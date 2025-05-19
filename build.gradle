@@ -40,7 +40,7 @@ dependencies {
     implementation("com.sun.activation:javax.activation:1.2.0")
     implementation("org.ini4j:ini4j:0.4.1")
     implementation("commons-beanutils:commons-beanutils:1.9.3")
-    implementation("org.apache.xmlgraphics:batik-all:1.9.1")
+    implementation("org.apache.xmlgraphics:batik-parser:1.19")
     implementation("org.apache.httpcomponents:httpclient:4.5.6")
     implementation("org.apache.httpcomponents:httpmime:4.5.6")
     implementation("gnu.getopt:java-getopt:1.0.13")
