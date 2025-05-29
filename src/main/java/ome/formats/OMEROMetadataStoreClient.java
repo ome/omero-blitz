@@ -768,9 +768,9 @@ public class OMEROMetadataStoreClient
             try
             {
                 unsecure();
-            } catch (Ice.ConnectionRefusedException cre)
+            } catch (Ice.SocketException se)
             {
-                log.warn("Cannot fallback. Using secure connection", cre);
+                log.warn("Cannot fallback. Using secure connection", se);
             }
         }
 
