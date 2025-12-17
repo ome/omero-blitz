@@ -268,7 +268,7 @@ public class OmeroReader extends FormatReader {
                 group = val;
             }
             else if (key.equals("groupID")) {
-                groupID = new Long(val);
+                groupID = Long.value(val);
             }
             else if (key.equals("iid")) {
                 try {
@@ -318,7 +318,7 @@ public class OmeroReader extends FormatReader {
                 ExperimenterGroup defaultGroup =
                         iAdmin.getDefaultGroup(eventContext.userId);
                 if (!defaultGroup.getName().getValue().equals(group) &&
-                        !new Long(defaultGroup.getId().getValue()).equals(groupID))
+                        !Long.valueOf(defaultGroup.getId().getValue()).equals(groupID))
                 {
                     Experimenter exp = iAdmin.getExperimenter(eventContext.userId);
                     List<Long> groupList = iAdmin.getMemberOfGroupIds(exp);
