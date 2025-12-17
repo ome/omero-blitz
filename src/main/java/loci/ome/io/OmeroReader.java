@@ -268,7 +268,7 @@ public class OmeroReader extends FormatReader {
                 group = val;
             }
             else if (key.equals("groupID")) {
-                groupID = Long.value(val);
+                groupID = Long.valueOf(val);
             }
             else if (key.equals("iid")) {
                 try {
