@@ -126,8 +126,8 @@ public class ParametersIToPojoOptionsTest extends MockObjectTestCase {
         p.page(0, 1);
         assertTrue(p().isPagination());
         assertFalse(p().isUnique());
-        assertEquals(new Integer(0), p().getOffset());
-        assertEquals(new Integer(1), p().getLimit());
+        assertEquals(Integer.valueOf(0), p().getOffset());
+        assertEquals(Integer.valueOf(1), p().getLimit());
         assertFalse(p().isUnique());
         p.noPage();
         assertFalse(p().isPagination());
@@ -138,20 +138,20 @@ public class ParametersIToPojoOptionsTest extends MockObjectTestCase {
         p.page(rint(0), rint(1));
         assertTrue(p().isPagination());
         assertFalse(p().isUnique());
-        assertEquals(new Integer(0), p().getOffset());
-        assertEquals(new Integer(1), p().getLimit());
+        assertEquals(Integer.valueOf(0), p().getOffset());
+        assertEquals(Integer.valueOf(1), p().getLimit());
         assertFalse(p().isUnique());
         p.unique();
         assertTrue(p().isUnique());
         assertTrue(p().isPagination());
-        assertEquals(new Integer(0), p().getOffset());
-        assertEquals(new Integer(1), p().getLimit());
+        assertEquals(Integer.valueOf(0), p().getOffset());
+        assertEquals(Integer.valueOf(1), p().getLimit());
         p.noUnique();
         assertFalse(p().isUnique());
         assertTrue(p().isPagination());
         assertFalse(p().isUnique());
-        assertEquals(new Integer(0), p().getOffset());
-        assertEquals(new Integer(1), p().getLimit());
+        assertEquals(Integer.valueOf(0), p().getOffset());
+        assertEquals(Integer.valueOf(1), p().getLimit());
         p.noPage();
         
     }

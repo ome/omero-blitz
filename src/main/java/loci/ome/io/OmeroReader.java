@@ -717,10 +717,10 @@ public class OmeroReader extends FormatReader {
         String polylineID = MetadataTools.createLSID("Shape", roiNum, shapeNum);
         store.setLineID(polylineID, roiNum, shapeNum);
 
-        store.setLineX1(new Double(x1), roiNum, shapeNum);
-        store.setLineX2(new Double(x2), roiNum, shapeNum);
-        store.setLineY1(new Double(y1), roiNum, shapeNum);
-        store.setLineY2(new Double(y2), roiNum, shapeNum);
+        store.setLineX1(Double.valueOf(x1), roiNum, shapeNum);
+        store.setLineX2(Double.valueOf(x2), roiNum, shapeNum);
+        store.setLineY1(Double.valueOf(y1), roiNum, shapeNum);
+        store.setLineY2(Double.valueOf(y2), roiNum, shapeNum);
         store.setLineTheC(unwrap(shape1.getTheC()), roiNum, shapeNum);
         store.setLineTheZ(unwrap(shape1.getTheZ()), roiNum, shapeNum);
         store.setLineTheT(unwrap(shape1.getTheT()), roiNum, shapeNum);
@@ -848,8 +848,8 @@ public class OmeroReader extends FormatReader {
             t = new StringTokenizer(tt.nextToken(), ",");
             total = t.countTokens()/2;
             for (int j = 0; j < total; j++) {
-                x.add(new Float(t.nextToken()));
-                y.add(new Float(t.nextToken()));
+                x.add(Float.valueOf(t.nextToken()));
+                y.add(Float.valueOf(t.nextToken()));
             }
         }
 

@@ -227,19 +227,19 @@ public class ReflectiveApiTest extends MockObjectTestCase {
                 Class<?> componentClass = (Class<?>) componentType;
                 v = Array.newInstance(componentClass, 0);
             } else if (long.class.isAssignableFrom(t)) {
-                v = new Long(0);
+                v = Long.valueOf(0);
             } else if (int.class.isAssignableFrom(t)) {
-                v = new Integer(0);
+                v = Integer.valueOf(0);
             } else if (double.class.isAssignableFrom(t)) {
-                v = new Double(0.0);
+                v = Double.valueOf(0.0);
             } else if (float.class.isAssignableFrom(t)) {
-                v = new Float(0.0);
+                v = Float.valueOf(0.0);
             } else if (boolean.class.isAssignableFrom(t)) {
                 v = Boolean.FALSE;
             } else if (Integer.class.isAssignableFrom(t)) {
-                v = new Integer(0);
+                v = Integer.valueOf(0);
             } else if (Long.class.isAssignableFrom(t)) {
-                v = new Long(0);
+                v = Long.valueOf(0);
             } else if (List.class.isAssignableFrom(t)) {
                 List l = new ArrayList<Object>();
                 if (pt != null) {
