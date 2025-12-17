@@ -233,7 +233,7 @@ public class ReflectiveApiTest extends MockObjectTestCase {
             } else if (double.class.isAssignableFrom(t)) {
                 v = Double.valueOf(0.0);
             } else if (float.class.isAssignableFrom(t)) {
-                v = Float.valueOf(0.0);
+                v = Float.valueOf(0.0f);
             } else if (boolean.class.isAssignableFrom(t)) {
                 v = Boolean.FALSE;
             } else if (Integer.class.isAssignableFrom(t)) {
