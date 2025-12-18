@@ -55,7 +55,7 @@ public class ModelTest {
 
         IceMapper mapper = new IceMapper();
         ExperimenterI ei = (ExperimenterI) mapper.map(e);
-        Assert.assertEquals(new Integer(1), new Integer(ei
+        Assert.assertEquals(Integer.valueOf(1), Integer.valueOf(ei
                 .sizeOfGroupExperimenterMap()));
 
     }
@@ -70,8 +70,8 @@ public class ModelTest {
         ei.copyObject(e, new IceMapper());
         // This may not hold without being called from the top level mapper
         // method
-        // assertEquals(new Integer(1), new
-        // Integer(ei.sizeOfGroupExperimenterMap()));
+        // assertEquals(Integer.valueOf(1),
+        // Integer.valueOf(ei.sizeOfGroupExperimenterMap()));
 
         Pixels p = new Pixels();
         Image i = new Image();
@@ -87,8 +87,8 @@ public class ModelTest {
         ei.setOmeName(rstring("name"));
         ei.linkExperimenterGroup(new ExperimenterGroupI());
         Experimenter e = (Experimenter) ei.fillObject(new IceMapper());
-        Assert.assertEquals(new Integer(1),
-                new Integer(e.sizeOfGroupExperimenterMap()));
+        Assert.assertEquals(Integer.valueOf(1),
+                Integer.valueOf(e.sizeOfGroupExperimenterMap()));
 
         PixelsI p = new PixelsI();
         ImageI i = new ImageI();

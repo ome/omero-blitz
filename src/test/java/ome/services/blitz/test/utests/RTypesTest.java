@@ -294,12 +294,12 @@ public class RTypesTest{
     @Test
     public void testWrapUnwrapMap() {
         Map<String, Object> input = new HashMap<String, Object>();
-        input.put("int", new Integer(0));
-        input.put("float", new Float(0.0f));
+        input.put("int", Integer.valueOf(0));
+        input.put("float", Float.valueOf(0.0f));
         RMap output = (RMap) omero.rtypes.wrap(input);
         Map<String, Object> test = (Map<String, Object>) omero.rtypes.unwrap(output);
-        assertEquals(new Integer(0), test.get("int"));
-        assertEquals(new Float(0.0f), test.get("float"));
+        assertEquals(Integer.valueOf(0), test.get("int"));
+        assertEquals(Float.valueOf(0.0f), test.get("float"));
     }
 
     @SuppressWarnings("unchecked")
@@ -313,10 +313,10 @@ public class RTypesTest{
         Set<Object> set = new HashSet<Object>();
 
         // Now put everything in everything
-        set.add(new Integer(3));
-        set.add(new Double(0.0d));
+        set.add(Integer.valueOf(3));
+        set.add(Double.valueOf(0.0d));
         set.add(new Timestamp(0l));
-        set.add(new Long(0L));
+        set.add(Long.valueOf(0L));
         set.add(new String("string"));
         /*
         Due to the key semantics of hash sets, placing these in the set
@@ -343,6 +343,6 @@ public class RTypesTest{
         list = wow.get("list");
         map1 = list.get(0);
         set = map1.get("set");
-        assertTrue(set.contains(new Integer(3)));
+        assertTrue(set.contains(Integer.valueOf(3)));
     }
 }
